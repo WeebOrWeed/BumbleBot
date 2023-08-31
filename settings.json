@@ -1,0 +1,12 @@
+{
+    "DATA": "DATA",
+    "BATCH_SIZE": 8,
+    "IMG_SIZE" : 224,
+    "DATA_PATH" : "D:/Projects/BumbleBot/DATA",
+    "DATA_INDEX" : "D:/Projects/BumbleBot/DATA/index.csv",
+    "EPOCHS": 100,
+    "MODELPATH": "D:/Projects/BumbleBot/model_weights",
+    "TTS": 0.75,
+    "TOTALSWIPES":200,
+    "THRESH": 0.65
+}
