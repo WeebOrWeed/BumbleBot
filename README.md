@@ -6,6 +6,9 @@ A autoswiper for bumble that learns your preferences
 
 Welcome to the BumbleBot Readme! This document will provide you with an overview of the Bumble AutoSwipe bot, its features, installation instructions, and usage guidelines. The Bumble AutoSwipe bot is designed to automate the swiping process on Bumble. Also note that this for educational purposes only. Apart from being quite unethical its also illegal to use bumble as a bot. For the whole article that delves into the details of why it was done please check here : [Shenanigans Article](https://www.shenanigans.blog/shenan/?shenan=bumblebot)
 
+Also here is a demo of the bot in action:
+[![Demo of Bumble Bot](https://img.youtube.com/vi/TggSPKmyDUY/0.jpg)](https://www.youtube.com/watch?v=TggSPKmyDUY)
+
 ## Features
 
 - **Automated Swiping**: The Bumble AutoSwipe bot is programmed to automatically swipe left or right on profiles based on predefined criteria. This eliminates the need for manual swiping, allowing you to browse through profiles more efficiently.
