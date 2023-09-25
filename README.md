@@ -34,7 +34,7 @@ Follow these steps to install the Bumble AutoSwipe bot:
 3. **Install Dependencies**: Install the required dependencies using:
 
    ```
-   pip install .
+   pip install -r requirements.txt
    ```
    Note this installs from the requirements.txt file I highly recommend using VEnv as a virtual environment. I personally used conda and installed all the packages into an anaconda environment.
 
