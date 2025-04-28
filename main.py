@@ -31,4 +31,5 @@ if __name__ == "__main__":
         else:
             print("Sorry that was not a recognized mode please type HELP to show all possible modes")
     except Exception as e:
+        print(e)
         print("You must pass in an argument, type HELP to view all possible options")

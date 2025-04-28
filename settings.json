@@ -1,12 +1,12 @@
 {
     "DATA": "DATA",
-    "BATCH_SIZE": 8,
+    "BATCH_SIZE": 5,
     "IMG_SIZE" : 224,
-    "DATA_PATH" : "D:/Projects/BumbleBot/DATA",
-    "DATA_INDEX" : "D:/Projects/BumbleBot/DATA/index.csv",
+    "DATA_PATH" : "C:/Users/Redux/autolike/BumbleBot/DATA/e4fa3127d2b1b7137b65ed697015d407",
+    "DATA_INDEX" : "C:/Users/Redux/autolike/BumbleBot/DATA/e4fa3127d2b1b7137b65ed697015d407/e4fa3127d2b1b7137b65ed697015d407.csv",
     "EPOCHS": 100,
-    "MODELPATH": "D:/Projects/BumbleBot/model_weights",
+    "MODELPATH": "C:/Users/Redux/autolike/BumbleBot/model_weights.weights.h5",
     "TTS": 0.75,
     "TOTALSWIPES":200,
-    "THRESH": 0.65
+    "THRESH": 0.2
 }

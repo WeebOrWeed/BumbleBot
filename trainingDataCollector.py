@@ -22,6 +22,7 @@ def main_scrapping_app():
             # create a folder under the data param with this name
             datafp = os.path.join(os.getcwd(), settings["DATA"], sessionID)
             os.mkdir(datafp)
+            print("Made directory " + datafp)
             # now open a file in this folder
             csvsessdata = open(os.path.join(datafp, f"{sessionID}.csv"), "w")
             csvsessdata.write("profile,outcome\n")

@@ -1,32 +1,45 @@
 import machineLearning as ML
 import utilities as UM
-
+import numpy as np
+import torch
+import os
 
 def main_trainning_app():
-    # load up the JSON file that holds the settings
+    # Load settings
     settings = UM.load_settings()
-    # first construct the training data example
-    [x_train, y_train, x_test, y_test] = ML.construct_dataset(
-        settings["DATA_INDEX"], settings["DATA_PATH"], int(settings["IMG_SIZE"]), float(settings["TTS"])
-    )
-    # the model just keeps reajusting old weights that its seen
-    # try loading the model if that exists
-    model = ML.build_model(int(settings["IMG_SIZE"]))
-    try:
-        model.load_weights(settings["MODELPATH"])
-    except Exception as e:
-        print("Couldn't load existing model")
-    # now start training
-    model = ML.train_model(
-        x_train, y_train, int(settings["IMG_SIZE"]), int(settings["BATCH_SIZE"]), int(settings["EPOCHS"])
-    )
-    # make some test predictions to see how the model did 
-    y_preads = model.predict(x_test)
-    accuracy = ML.return_accuracy(y_test, y_preads)
-    print(f"The model is {accuracy*100}% accurate")
-    # save the accuracy
-    model.save_weights(settings["MODELPATH"])
 
+    # Load dataset
+    train_data, test_data = ML.construct_dataset(
+        settings["DATA_INDEX"], settings["DATA_PATH"],
+        int(settings["IMG_SIZE"]), int(settings["BATCH_SIZE"]), float(settings["TTS"])
+    )
+
+    # Train the model using the modified train_model function
+    model = ML.train_model(
+        train_loader=train_data,
+        num_epochs=int(settings["EPOCHS"]),
+        image_size=int(settings["IMG_SIZE"])
+    )
+
+    print("Training complete")
+    # Save PyTorch model manually
+    if settings.get("MODELPATH"):
+        torch.save(model.state_dict(), settings["MODELPATH"])
+
+    # Predict
+    y_preds_raw = ML.predict(model, test_data)
+
+    y_preds = ML.raw_to_binary(y_preds_raw, settings.get("THRESH", 0.5))
+    print("Unique predicted labels:", np.unique(y_preds, return_counts=True))
+
+    # Evaluation
+    print("Predicted Positives:", y_preds.count(1), "Out of", len(y_preds))
+
+    accuracy = ML.calculate_accuracy(test_data, y_preds)
+    print(f"The model is {accuracy * 100:.2f}% accurate")
+
+    torch.save(model.state_dict(), settings["MODELPATH"])
+    print(f"Model saved to: {settings["MODELPATH"]}")
 
 if __name__ == "__main__":
     main_trainning_app()
