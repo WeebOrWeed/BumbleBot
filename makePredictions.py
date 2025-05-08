@@ -2,7 +2,8 @@ import machineLearning as ML
 import bumbleMethods as BM
 import utilities as UM
 import numpy as np
-from machineLearning import InterestRegressor  # Import the regression model
+from machineLearning import InterestRegressorWithMetadata  # Import the regression model
+from obeseTrainer import BodyTypeClassifier
 from selenium import webdriver
 import torch
 import os
@@ -15,10 +16,11 @@ def make_predictions():
         # first go to bumble.com
         driver = webdriver.Chrome()
         # also load up the model cause why do that later
-        loaded_model = InterestRegressor(int(settings["IMG_SIZE"]))  # Load the regression model
+        loaded_model = InterestRegressorWithMetadata(int(settings["IMG_SIZE"]))  # Load the regression model
+        ML.init_models()
         # try loading up the weights
         try:
-            load_path = settings["MODELPATH"]
+            load_path = os.path.normpath(settings["MODELPATH"])
             device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
             loaded_state_dict = torch.load(load_path, map_location=device)
             loaded_model.load_state_dict(loaded_state_dict)
@@ -50,7 +52,8 @@ def make_predictions():
                 # increment the counter down
                 counter = counter - 1
                 # wait for about 5 seconds
-                time.sleep(5)
+                value = np.random.normal(loc=5, scale=0.3)
+                time.sleep(value)
                 # then save all the pictures in the right directory
                 profile = BM.find_download_all_pictures(driver, datafp)
                 # make a prediction on this profile

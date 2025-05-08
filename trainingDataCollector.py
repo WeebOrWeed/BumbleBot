@@ -1,4 +1,5 @@
 from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
 import os
 import bumbleMethods as BM
 import utilities as UM
@@ -8,8 +9,11 @@ def main_scrapping_app():
     try:
         # load up all the settings
         settings = UM.load_settings()
+        # Set up Chrome options
+        chrome_options = Options()
+        chrome_options.add_argument("--disable-gpu")  # Disable GPU
         # first go to bumble.com
-        driver = webdriver.Chrome()
+        driver = webdriver.Chrome(options=chrome_options)
         driver.get("https://bumble.com/app")
         # do nothing await user input
         login = input("Type in yes when you have logged in (Then ofc press enter): ")
@@ -25,7 +29,7 @@ def main_scrapping_app():
             print("Made directory " + datafp)
             # now open a file in this folder
             csvsessdata = open(os.path.join(datafp, f"{sessionID}.csv"), "w")
-            csvsessdata.write("profile,outcome\n")
+            csvsessdata.write("profile,outcome,obese,racescores\n")
             # this is the end of the first initial setup
             while True:
                 # this begins the while true loop of saving data

@@ -10,7 +10,7 @@ def main_trainning_app():
 
     # Load dataset
     train_data, test_data = ML.construct_dataset(
-        settings["DATA_INDEX"], settings["DATA_PATH"],
+        os.path.normpath(settings["DATA_INDEX"]), os.path.normpath(settings["INIT_DATA_PATH"]),
         int(settings["IMG_SIZE"]), int(settings["BATCH_SIZE"]), float(settings["TTS"])
     )
 
@@ -18,13 +18,14 @@ def main_trainning_app():
     model = ML.train_model(
         train_loader=train_data,
         num_epochs=int(settings["EPOCHS"]),
-        image_size=int(settings["IMG_SIZE"])
+        image_size=int(settings["IMG_SIZE"]),
+        model_path = os.path.normpath(settings.get("MODELPATH"))
     )
 
     print("Training complete")
     # Save PyTorch model manually
-    if settings.get("MODELPATH"):
-        torch.save(model.state_dict(), settings["MODELPATH"])
+    if os.path.normpath(settings.get("MODELPATH")):
+        torch.save(model.state_dict(), os.path.normpath(settings["MODELPATH"]))
 
     # Predict
     y_preds_raw = ML.predict(model, test_data)
@@ -38,8 +39,8 @@ def main_trainning_app():
     accuracy = ML.calculate_accuracy(test_data, y_preds)
     print(f"The model is {accuracy * 100:.2f}% accurate")
 
-    torch.save(model.state_dict(), settings["MODELPATH"])
-    print(f"Model saved to: {settings["MODELPATH"]}")
+    torch.save(model.state_dict(), os.path.normpath(settings["MODELPATH"]))
+    print(f"Model saved to: {os.path.normpath(settings["MODELPATH"])}")
 
 if __name__ == "__main__":
     main_trainning_app()
