@@ -4,7 +4,6 @@
     "IMG_SIZE": 224,
     "INIT_DATA_PATH": "InitialData",
     "DATA_INDEX": "Weights\\test.csv",
-    "EPOCHS": 500,
     "MODELPATH": "Weights\\test.h5",
     "TTS": 0.75,
     "TOTALSWIPES": 200,
