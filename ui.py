@@ -7,11 +7,14 @@ import os
 import io
 import sys
 import json
+import csv
 import makePredictions as MP
 import machineLearning as ML
 import utilities as UM
 import threading
 from tkinter.scrolledtext import ScrolledText
+from PIL import Image, ImageTk
+import pandas as pd
 
 SETTINGS_PATH = "settings.json"
 WEIGHT_FOLDER = "Weights"
@@ -24,11 +27,12 @@ class WeightSelectorApp:
 
         self.selected_button = None
         self.selected_profile_path = None
+        self.image_index = 0
 
         with open(SETTINGS_PATH, "r") as f:
             self.settings = json.load(f)
         self.modelpath = os.path.normpath(self.settings.get("MODELPATH", ""))
-        self.data_index_path = os.path.normpath(self.settings.get("DATA_INDEX", ""))
+        self.ground_truth = pd.read_csv(f"{self.settings.get("INIT_DATA_PATH","")}\\init_data.csv")
 
         self.left_frame = tk.Frame(root, width=300)
         self.left_frame.pack(side=tk.LEFT, fill=tk.Y)
@@ -58,6 +62,9 @@ class WeightSelectorApp:
         self.refresh_profile_buttons()
 
     def refresh_profile_buttons(self):
+        # Clear selected_button because we're about to destroy all of them
+        self.selected_button = None
+
         for widget in self.scrollable_frame.winfo_children():
             if isinstance(widget, tk.Button) and widget["text"] != "+ Create New Profile":
                 widget.destroy()
@@ -102,7 +109,7 @@ class WeightSelectorApp:
         print("Running swipe...")
         MP.make_predictions()
 
-    def load_image_to_label(label_widget, image_path, fixed_height=300):
+    def load_image_to_label(self, label_widget, image_path, fixed_height=300):
         try:
             image = Image.open(image_path).convert("RGB")
     
@@ -112,7 +119,7 @@ class WeightSelectorApp:
             new_height = fixed_height
             new_width = int(aspect_ratio * new_height)
     
-            resized_image = image.resize((new_width, new_height), Image.ANTIALIAS)
+            resized_image = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
             tk_image = ImageTk.PhotoImage(resized_image)
     
             # Store a reference to avoid garbage collection
@@ -128,36 +135,115 @@ class WeightSelectorApp:
         self.trainer_win.title("Trainer")
         self.trainer_win.geometry("800x600")
         self.trainer_win.grab_set()
+        self.image_index = 0 # TODO: make this load the current index of profile
+    
+        settings = UM.load_settings()
+        self.data_index_path = os.path.normpath(settings["DATA_INDEX"])
+        # Create index data if not available
+        if not os.path.exists(self.data_index_path):
+            with open(self.data_index_path, "w") as file:
+                writer = csv.writer(file)
+                writer.writerow(["image","outcome","race_scores","obese_scores"])
 
         tk.Label(self.trainer_win, text="Trainer", font=("Arial", 20)).pack(pady=10)
+    
+        # Main frame for everything
+        top_frame = tk.Frame(self.trainer_win)
+        top_frame.pack(pady=10)
+    
+        # Previous Button
+        previous_button = tk.Frame(top_frame)
+        previous_button.pack(side=tk.LEFT, padx=10)
+        self.prev_button = tk.Button(previous_button, text="Previous", font=("Arial", 12), command=self.handle_prev_button)
+        self.prev_button.pack(pady=20)
 
-        # Row: Previous | Image | Slider | Confirm & Next
-        preview_frame = tk.Frame(self.trainer_win)
-        preview_frame.pack(pady=10)
-
-        tk.Button(preview_frame, text="Previous", font=("Arial", 12)).pack(side=tk.LEFT, padx=10)
-
-        self.image_label = tk.Label(preview_frame)
-        self.image_label.pack(side=tk.LEFT, padx=10)
-        load_image_to_label(self.image_label,os.path.normpath(f"{self.settings.get("INIT_DATA_PATH", "")}\\0.png"))
-
-        self.attr_slider = Scale(preview_frame, from_=-1, to=1, resolution=0.1, orient="horizontal", label="Attractiveness")
+        # Image + slider vertical frame
+        center_column = tk.Frame(top_frame)
+        center_column.pack(side=tk.LEFT, padx=10)
+    
+        self.attr_slider = Scale(center_column, from_=-1, to=1, resolution=0.1, orient="horizontal", label="Attractiveness")
         self.attr_slider.set(0)
-        self.attr_slider.pack(side=tk.LEFT, padx=10)
-
-        tk.Button(preview_frame, text="Confirm & Next", font=("Arial", 12)).pack(side=tk.LEFT, padx=10)
-
+        self.attr_slider.pack(pady=5, anchor="center")
+    
+        self.image_label = tk.Label(center_column)
+        self.image_label.pack(pady=5, anchor="center")
+    
+        # Load image into label
+        image_path = os.path.normpath(f"{self.settings.get('INIT_DATA_PATH', '')}\\{self.image_index}.png")
+        self.load_image_to_label(self.image_label, image_path)
+        
+        # Next Button
+        next_button = tk.Frame(top_frame)
+        next_button.pack(side=tk.LEFT, padx=10)
+        self.next_button = tk.Button(next_button, text="Confirm & Next", font=("Arial", 12), command=self.handle_next_button)
+        self.next_button.pack(pady=20)
+        if self.image_index == count_pngs(self.settings.get('INIT_DATA_PATH', '')):
+            self.next_button.config(state=tk.DISABLED)
+        if self.image_index == 0:
+            self.prev_button.config(state=tk.DISABLED)
+        # Bottom frame for train/cancel
         self.button_frame = tk.Frame(self.trainer_win)
         self.button_frame.pack(pady=10)
-
+    
         self.train_button = tk.Button(self.button_frame, text="Train", font=("Arial", 12), width=10, command=self.handle_train_or_cancel)
         self.train_button.pack(side=tk.LEFT, padx=10)
-
+    
         return_button = tk.Button(self.button_frame, text="Return", font=("Arial", 12), width=10, command=lambda: self.close_trainer(self.trainer_win))
         return_button.pack(side=tk.LEFT, padx=10)
-
+    
         self.progress_bar = None
         self.epoch_label = None
+
+    def handle_prev_button(self):
+        if self.image_index <= 0:
+            return
+        self.image_index -= 1
+        image_path = os.path.normpath(f"{self.settings.get('INIT_DATA_PATH', '')}\\{self.image_index}.png")
+        self.load_image_to_label(self.image_label, image_path)
+        # Read the row value and restore value
+        df = pd.read_csv(self.data_index_path)
+        stored_attractiveness = df.loc[df["image"] == f"{self.image_index}.png"].iloc[0].to_dict()["outcome"]
+        self.attr_slider.set(stored_attractiveness)
+        self.next_button.config(state=tk.NORMAL)
+        if self.image_index == 0:
+            self.prev_button.config(state=tk.DISABLED)
+
+    def handle_next_button(self):
+        # Write the current slider value into csv
+        row_dict = self.ground_truth.loc[self.ground_truth["image"] == f"{self.image_index}.png"].iloc[0].to_dict()
+        df = pd.read_csv(self.data_index_path)
+        match = df["image"] == f"{self.image_index}.png"
+        if match.any():
+            # Update row if already exist
+            df.loc[match, "image"] = row_dict["image"]
+            df.loc[match, "outcome"] = self.attr_slider.get()
+            df.loc[match, "race_scores"] = row_dict["race_scores"]
+            df.loc[match, "obese_scores"] = row_dict["obese_scores"]
+        else:
+            # Append a new row
+            new_row = {
+                "image": row_dict["image"],
+                "outcome": self.attr_slider.get(),
+                "race_scores": row_dict["race_scores"],
+                "obese_scores": row_dict["obese_scores"]
+            }
+            df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+
+        # Save the updated DataFrame back to the CSV
+        df.to_csv(self.data_index_path, index=False)
+
+        self.image_index += 1
+        image_path = os.path.normpath(f"{self.settings.get('INIT_DATA_PATH', '')}\\{self.image_index}.png")
+        self.load_image_to_label(self.image_label, image_path)
+        match = df["image"] == f"{self.image_index}.png"
+        if match.any():
+            # Load the previous value if it has been set
+            self.attr_slider.set(float(df.loc[match, "outcome"]))
+        else:
+            self.attr_slider.set(0)
+        self.prev_button.config(state=tk.NORMAL)
+        if self.image_index == count_pngs(self.settings.get('INIT_DATA_PATH', '')):
+            self.next_button.config(state=tk.DISABLED)
 
     def handle_train_or_cancel(self):
         if not self.training_in_progress:
@@ -252,6 +338,9 @@ class WeightSelectorApp:
             open(full_path, "a").close()
             self.refresh_profile_buttons()
             self.select_profile(full_path, name)
+
+def count_pngs(folder_path):
+    return len([f for f in os.listdir(folder_path) if f.lower().endswith('.png')])
 
 if __name__ == "__main__":
     if not os.path.exists(WEIGHT_FOLDER):
