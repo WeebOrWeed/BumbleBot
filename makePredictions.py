@@ -105,9 +105,9 @@ def wait_for_login_callback(driver):
                 writer.writerow(["profile","prediction","race_scores","obese_scores"])
         
         df = pd.read_csv(prediction_csv_path)
-        # now open a file in this folder
-        csvsessdata = open(, "w")
-        csvsessdata.write("profile,prediction_score,decision\n")  # Changed header
+        # # now open a file in this folder
+        # csvsessdata = open(, "w")
+        # csvsessdata.write("profile,prediction_score,decision\n")  # Changed header
         # this is the end of the first initial setup
         counter = int(settings["TOTALSWIPES"])
         while counter > 0:
@@ -133,7 +133,7 @@ def wait_for_login_callback(driver):
             print(f"average prediction score: {avg_prediction:.4f}, final decision: {decision}")
 
             # log this in the logger
-            csvsessdata.write(f"{profile},{avg_prediction},{decision}\n") # Log the continuous score
+            # csvsessdata.write(f"{profile},{avg_prediction},{decision}\n") # Log the continuous score
 
             # then actually swipe left or right
             if (decision == 1):
