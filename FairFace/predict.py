@@ -25,10 +25,10 @@ model_path_multi_4 = os.path.join(BASE_DIR, 'fair_face_models', 'res34_fair_alig
 
 # Returns all the faces in iamge
 def detect_faces_of_image(image, default_max_size=800, size = 300, padding = 0.25):
-    cnn_face_detector = dlib.cnn_face_detection_model_v1('dlib_models/mmod_human_face_detector.dat')
-    sp = dlib.shape_predictor('dlib_models/shape_predictor_5_face_landmarks.dat')
+    cnn_face_detector = dlib.cnn_face_detection_model_v1(os.path.join(BASE_DIR, 'dlib_models', 'mmod_human_face_detector.dat')) # this is too slow
+    # cnn_face_detector = dlib.get_frontal_face_detector() # faster model but less accurate
+    sp = dlib.shape_predictor(os.path.join(BASE_DIR, 'dlib_models', 'shape_predictor_5_face_landmarks.dat'))
     img = np.array(image)
-
     old_height, old_width, _ = img.shape
     if old_width > old_height:
         new_width = default_max_size
@@ -36,9 +36,7 @@ def detect_faces_of_image(image, default_max_size=800, size = 300, padding = 0.2
     else:
         new_height = default_max_size
         new_width = int(default_max_size * old_width / old_height)
-
     img = dlib.resize_image(img, rows=new_height, cols=new_width)
-    
     dets = cnn_face_detector(img, 1)
     num_faces = len(dets)
     if num_faces == 0:
@@ -47,8 +45,11 @@ def detect_faces_of_image(image, default_max_size=800, size = 300, padding = 0.2
     # Find the 5 face landmarks we need to do the alignment.
     faces = dlib.full_object_detections()
     for detection in dets:
-        rect = detection.rect
+        rect = detection.rect if hasattr(detection, "rect") else detection
         faces.append(sp(img, rect))
+    # for detection in dets:
+    #     rect = detection.rect
+    #     faces.append(sp(img, rect))
     return dlib.get_face_chips(img, faces, size=size, padding = padding)
 
 def predidct_races_of_image(face_chips):

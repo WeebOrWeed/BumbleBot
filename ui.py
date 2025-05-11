@@ -52,23 +52,23 @@ class WeightSelectorApp:
 
 
     def refresh_profile_buttons(self):
-        # Clear old buttons except the create button
+        self.selected_button = None
+    
         for widget in self.list_frame.winfo_children():
-            if widget != self.create_button:
+            if isinstance(widget, tk.Button) and widget["text"] != "+ Create New Profile":
                 widget.destroy()
-
+        
         selected_name = os.path.splitext(os.path.basename(self.modelpath))[0]
-
+    
         for fname in sorted(os.listdir(WEIGHT_FOLDER)):
-            if fname.endswith(".h5"):
-                profile_name = os.path.splitext(fname)[0]
-                full_path = os.path.join(WEIGHT_FOLDER, fname)
-
-                b = tk.Button(self.list_frame, text=profile_name, anchor="w", command=lambda f=full_path, b=profile_name: self.select_profile(f, b))
+            if os.path.isdir(os.path.join(WEIGHT_FOLDER, fname)):
+                profile_name = fname
+                full_path = os.path.join(WEIGHT_FOLDER, fname, f"{fname}.h5")
+                b = tk.Button(self.list_frame, text=profile_name, anchor="w",
+                              command=lambda f=full_path, b=profile_name: self.select_profile(f, b))
                 b.pack(fill=tk.X)
-
                 self.profile_buttons[profile_name] = b
-
+    
                 if profile_name == selected_name:
                     self.select_profile(full_path, profile_name, init=True)
 
@@ -95,7 +95,10 @@ class WeightSelectorApp:
             btn_config = {"font": ("Arial", 14), "width": 12, "height": 2, "bg": "#4CAF50", "fg": "white"}
             tk.Button(center_wrapper, text="Train", **btn_config, command=self.open_trainer_window).pack(pady=10, anchor="center")
             tk.Button(center_wrapper, text="Swipe", **btn_config, command=self.run_swipe).pack(pady=10, anchor="center")
-            tk.Button(center_wrapper, text="Review", **btn_config).pack(pady=10, anchor="center")
+            tk.Button(center_wrapper, text="Review", **btn_config, command=self.open_review_panel).pack(pady=10, anchor="center")
+
+    def open_review_panel(self):
+        return
 
     def run_swipe(self):
         print("Running swipe...")
@@ -383,7 +386,8 @@ class WeightSelectorApp:
         name = simpledialog.askstring("New Profile", "Enter profile name:")
         if name:
             full_name = name + ".h5"
-            full_path = os.path.normpath(os.path.join(WEIGHT_FOLDER, full_name))
+            full_path = os.path.normpath(os.path.join(WEIGHT_FOLDER, name, full_name))
+            os.makedirs(os.path.dirname(full_path), exist_ok=True)
             open(full_path, "a").close()
             self.refresh_profile_buttons()
             self.select_profile(full_path, name)

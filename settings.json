@@ -3,8 +3,8 @@
     "BATCH_SIZE": 5,
     "IMG_SIZE": 224,
     "INIT_DATA_PATH": "InitialData",
-    "DATA_INDEX": "Weights\\test.csv",
-    "MODELPATH": "Weights\\test.h5",
+    "DATA_INDEX": "Weights\\tianlin\\tianlin.csv",
+    "MODELPATH": "Weights\\tianlin\\tianlin.h5",
     "TTS": 0.75,
     "TOTALSWIPES": 200,
     "THRESH": 0.2
