@@ -1,0 +1,13 @@
+{
+    "DATA": "DATA",
+    "BATCH_SIZE": 5,
+    "IMG_SIZE": 224,
+    "INIT_DATA_PATH": "C:\\Users\\Redux\\autolike\\BumbleBot\\app\\images\\initialdata",
+    "DATA_INDEX": "C:\\Users\\Redux\\autolike\\BumbleBot\\app\\weights\\tianlin\\tianlin.csv",
+    "MODELPATH": "C:\\Users\\Redux\\autolike\\BumbleBot\\app\\weights\\tianlin\\tianlin.h5",
+    "PROFILEPATH": "C:\\Users\\Redux\\autolike\\BumbleBot\\app\\weights\\tianlin",
+    "TTS": 0.75,
+    "TOTALSWIPES": 2000,
+    "THRESH": 0.2,
+    "MAX_PROFILE_STORED": 15
+}

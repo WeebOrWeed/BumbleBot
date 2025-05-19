@@ -1,0 +1,146 @@
+import tkinter as tk
+from tkinter import simpledialog
+from tkinter.ttk import Progressbar
+from tkinter import filedialog
+from tkinter import Scale
+from utils import utilities as UM
+import os
+import pandas as pd
+from pathlib import Path
+import csv
+from PIL import Image, ImageTk
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+class ReviewPanel(tk.Toplevel):
+    class ImageInfo:
+        def __init__(self, image_path, score, outcome):
+            self.image_path = image_path
+            self.score = score
+            self.outcome = outcome
+        
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.settings = UM.load_settings()
+        # Load the image paths
+        self.images = []
+        predictions_path = os.path.join(self.settings["PROFILEPATH"], "predictions.csv")
+        if not os.path.exists(predictions_path):
+            with open(predictions_path, "w", newline="") as file:
+                writer = csv.writer(file)
+                writer.writerow(["profile","image","predicted_attractiveness","final_decision"])
+                file.flush()
+        df = pd.read_csv(predictions_path)
+        for row in df.itertuples():
+            self.images.append(self.ImageInfo(os.path.join(self.settings["PROFILEPATH"], "PREDICTION", row.profile, row.image), row.predicted_attractiveness, row.final_decision))
+        self.image_index = len(self.images) - 1
+        
+        self.title("Review Past")
+        self.geometry("800x500")
+        self.grab_set()
+        tk.Label(self, text="Review your predictions", font=("Arial", 20)).pack(pady=10)
+        # Main frame for everything
+        top_frame = tk.Frame(self)
+        top_frame.pack(pady=10)
+        # Previous Button
+        previous_button_frame = tk.Frame(top_frame)
+        previous_button_frame.pack(side=tk.LEFT, padx=10)
+        self.prev_button = tk.Button(previous_button_frame, text="Previous", font=("Arial", 12), command=self.handle_prev_button)
+        self.prev_button.pack(pady=20)
+        
+        # Image + slider vertical frame
+        center_column = tk.Frame(top_frame)
+        center_column.pack(side=tk.LEFT, padx=10)
+    
+        self.attr_slider = Scale(center_column, from_=-1, to=1, resolution=0.1, orient="horizontal", label="Attractiveness", length=100)
+        self.attr_slider.pack(pady=5, anchor="center")
+    
+        self.image_label = tk.Label(center_column)
+        self.image_label.pack(pady=5, anchor="center")
+        
+        self.decision_label = tk.Label(self.image_label)
+        self.decision_label.place(relx=1.0, rely=0.0, anchor="ne")
+        
+        # Next Button
+        next_button_frame = tk.Frame(top_frame)
+        next_button_frame.pack(side=tk.LEFT, padx=10)
+        self.next_button = tk.Button(next_button_frame, text="Confirm & Next", font=("Arial", 12), command=self.handle_next_button)
+        self.next_button.pack(pady=20)
+        self.update_buttons()
+        
+        if self.image_index > -1:
+            self.load_image_to_label(self.images[self.image_index].image_path)
+            self.attr_slider.set(self.images[self.image_index].score)
+            self.update_decision_label(self.images[self.image_index].outcome)
+        else:
+            self.load_image_to_label(os.path.join(BASE_DIR, "images", "ui", "NoReviews.png"))
+            self.next_button.config(state=tk.DISABLED)
+            self.prev_button.config(state=tk.DISABLED)
+    
+    def handle_next_button(self):
+        self.image_index += 1
+        self.load_image_to_label(self.images[self.image_index].image_path)
+        self.attr_slider.set(self.images[self.image_index].score)
+        self.update_decision_label(self.images[self.image_index].outcome)
+        self.update_buttons()    
+        
+    def handle_prev_button(self):
+        self.image_index -= 1
+        self.load_image_to_label(self.images[self.image_index].image_path)
+        self.attr_slider.set(self.images[self.image_index].score)
+        self.update_decision_label(self.images[self.image_index].outcome)
+        self.update_buttons()
+        
+    def update_buttons(self):
+        if self.image_index == len(self.images) - 1:
+            self.next_button.config(state=tk.DISABLED)
+        elif self.image_index > 0:
+            self.prev_button.config(state=tk.NORMAL)
+        if self.image_index == 0:
+            self.prev_button.config(state=tk.DISABLED)
+        elif self.image_index < len(self.images) - 1:
+            self.next_button.config(state=tk.NORMAL)
+    
+    def update_decision_label(self, liked, fixed_height=80):
+        try:
+            image_path = ""
+            if liked:
+                image_path = os.path.join(BASE_DIR, "images", "ui", "Liked.png")
+            else:
+                image_path = os.path.join(BASE_DIR, "images", "ui", "Nope.png")
+            image = Image.open(image_path).convert("RGB")
+    
+            # Calculate new width while maintaining aspect ratio
+            width, height = image.size
+            aspect_ratio = width / height
+            new_height = fixed_height
+            new_width = int(aspect_ratio * new_height)
+    
+            resized_image = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+            tk_image = ImageTk.PhotoImage(resized_image)
+    
+            # Store a reference to avoid garbage collection
+            self.decision_label.image = tk_image
+            self.decision_label.config(image=tk_image)
+        except Exception as e:
+            print(f"[ERROR] Failed to load image {image_path}: {e}")
+    
+    def load_image_to_label(self, image_path, fixed_height=300):
+        try:
+            image = Image.open(image_path).convert("RGB")
+    
+            # Calculate new width while maintaining aspect ratio
+            width, height = image.size
+            aspect_ratio = width / height
+            new_height = fixed_height
+            new_width = int(aspect_ratio * new_height)
+    
+            resized_image = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+            tk_image = ImageTk.PhotoImage(resized_image)
+    
+            # Store a reference to avoid garbage collection
+            self.image_label.image = tk_image
+            self.image_label.config(image=tk_image)
+        except Exception as e:
+            print(f"[ERROR] Failed to load image {image_path}: {e}")
+        
