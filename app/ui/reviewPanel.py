@@ -36,7 +36,7 @@ class ReviewPanel(tk.Toplevel):
         self.image_index = len(self.images) - 1
         
         self.title("Review Past")
-        self.geometry("800x500")
+        self.geometry("800x600")
         self.grab_set()
         tk.Label(self, text="Review your predictions", font=("Arial", 20)).pack(pady=10)
         # Main frame for everything
@@ -58,8 +58,8 @@ class ReviewPanel(tk.Toplevel):
         self.image_label = tk.Label(center_column)
         self.image_label.pack(pady=5, anchor="center")
         
-        self.decision_label = tk.Label(self.image_label)
-        self.decision_label.place(relx=1.0, rely=0.0, anchor="ne")
+        self.decision_label = tk.Label(center_column)
+        self.decision_label.pack(pady=5, anchor="center")
         
         # Next Button
         next_button_frame = tk.Frame(top_frame)
@@ -108,7 +108,9 @@ class ReviewPanel(tk.Toplevel):
                 image_path = os.path.join(BASE_DIR, "images", "ui", "Liked.png")
             else:
                 image_path = os.path.join(BASE_DIR, "images", "ui", "Nope.png")
-            image = Image.open(image_path).convert("RGB")
+            image = Image.open(image_path).convert("RGBA")
+            bg = Image.new("RGBA", image.size, (0, 0, 0, 0))
+            image = Image.alpha_composite(bg, image)
     
             # Calculate new width while maintaining aspect ratio
             width, height = image.size
