@@ -16,8 +16,10 @@ from torchvision.models import efficientnet_b0, EfficientNet_B0_Weights
 from torchvision import transforms
 import ast  # For safely evaluating the string representation of the list
 import dlib
+from utils import utilities as UM
+import csv
 
-def construct_dataset(data_index_path, data_path, img_size, batch_size, train_test_split):
+def construct_dataset(data_index_path, user_verdicts_path, data_path, img_size, batch_size, train_test_split):
     try:
         transform = transforms.Compose([
             transforms.Resize((img_size, img_size)),
@@ -26,7 +28,8 @@ def construct_dataset(data_index_path, data_path, img_size, batch_size, train_te
         ])
 
         full_dataset = ProfileImageDatasetWithMetadata(
-            csv_file=data_index_path,
+            init_csv_file=data_index_path,
+            user_csv_file = user_verdicts_path,
             root_dir=data_path,
             transform=transform
         )
@@ -54,24 +57,43 @@ def parse_score_string(score_str):
     return ast.literal_eval(final_str)
 
 class ProfileImageDatasetWithMetadata(Dataset):
-    def __init__(self, csv_file, root_dir, transform=None, num_race_classes=7, num_obesity_classes=3):
-        self.df = pd.read_csv(csv_file)
+    def __init__(self, init_csv_file, user_csv_file, root_dir, transform=None, num_race_classes=7, num_obesity_classes=3):
+        self.df1 = pd.read_csv(init_csv_file)
+        if not os.path.exists(user_csv_file):
+            with open(user_csv_file, "w", newline="") as file:
+                writer = csv.writer(file)
+                writer.writerow(["image","outcome","race_scores","obese_scores"])
+                file.flush()
+        self.df2 = pd.read_csv(user_csv_file)
         self.root_dir = root_dir
         self.transform = transform
         self.num_race_classes = num_race_classes
         self.num_obesity_classes = num_obesity_classes
+        
+        self.len1 = len(self.df1)
+        self.len2 = len(self.df2)
 
     def __len__(self):
-        return len(self.df)
+        return self.len1 + self.len2
 
     def __getitem__(self, idx):
-        row = self.df.iloc[idx]
+        if idx < self.len1:
+            row = self.df1.iloc[idx]
+            return self.process_row(row, source="init")
+        else:
+            row = self.df2.iloc[idx - self.len1]
+            return self.process_row(row, source="user")
+        
+    def process_row(self, row, source="init"):
         image_name = row['image']
         label = float(row['outcome'])
         race_scores = parse_score_string(row['race_scores'])
         obesity_scores = parse_score_string(row['obese_scores'])
 
         image_path = os.path.join(self.root_dir, image_name)
+        if source == "user":
+            settings = UM.load_settings()
+            image_path = os.path.join(settings["BASE_DIR"],settings["PROFILEPATH"],"TRAINING",image_name)
         try:
             image = Image.open(image_path).convert('RGB')
         except:
@@ -168,6 +190,9 @@ def predict(model, data_loader):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.eval()
     all_predictions = []
+    race_list = []
+    obesity_list = []
+    
     with torch.no_grad():
         for images, race_onehot, obesity_onehot, _ in data_loader:
             images = images.to(device)
@@ -176,7 +201,9 @@ def predict(model, data_loader):
             outputs = model(images, race_onehot, obesity_onehot)
             predictions = outputs.cpu().numpy().flatten().tolist()
             all_predictions.extend(predictions)
-    return all_predictions
+            race_list.extend(race_onehot.tolist())
+            obesity_list.extend(obesity_onehot.tolist())
+    return all_predictions, race_list, obesity_list
 
 class SingleImageDataset(Dataset):
     def __init__(self, image_paths, race_vectors, obesity_vectors, img_size, transform=None):

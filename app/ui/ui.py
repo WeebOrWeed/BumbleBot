@@ -18,11 +18,6 @@ import pandas as pd
 from pathlib import Path
 from ui.reviewPanel import ReviewPanel
 
-BASE_DIR = Path(__file__).resolve().parent.parent
-
-SETTINGS_PATH = (BASE_DIR / "config" / "settings.json").resolve()
-WEIGHT_FOLDER = (BASE_DIR / "weights").resolve()
-
 class MainUI(tk.Tk):
     def __init__(self):
         super().__init__()
@@ -33,10 +28,10 @@ class MainUI(tk.Tk):
         self.selected_profile_path = None
         self.image_index = 0
 
-        with open(SETTINGS_PATH, "r") as f:
-            self.settings = json.load(f)
+        self.settings = UM.load_settings()
         self.modelpath = os.path.normpath(self.settings.get("MODELPATH", ""))
-        self.ground_truth = pd.read_csv(os.path.join(self.settings.get("INIT_DATA_PATH", ""), "init_data.csv"))
+        self.weightfolder = os.path.join(self.settings["BASE_DIR"], "weights")
+        self.ground_truth = pd.read_csv(os.path.join(self.settings.get("BASE_DIR", ""),self.settings.get("INIT_DATA_PATH", ""), "init_data.csv"))
 
         self.left_frame = tk.Frame(self, width=300)
         self.left_frame.pack(side=tk.LEFT, fill=tk.Y)
@@ -64,10 +59,10 @@ class MainUI(tk.Tk):
         
         selected_name = os.path.splitext(os.path.basename(self.modelpath))[0]
     
-        for fname in sorted(os.listdir(WEIGHT_FOLDER)):
-            if os.path.isdir((WEIGHT_FOLDER / fname).resolve()):
+        for fname in sorted(os.listdir(self.weightfolder)):
+            if os.path.isdir(os.path.join(self.weightfolder, fname)):
                 profile_name = fname
-                full_path = (WEIGHT_FOLDER / fname / f"{fname}.h5").resolve()
+                full_path = os.path.join(self.weightfolder, fname, f"{fname}.h5")
                 b = tk.Button(self.list_frame, text=profile_name, anchor="w",
                               command=lambda f=full_path, b=profile_name: self.select_profile(f, b))
                 b.pack(fill=tk.X)
@@ -136,7 +131,7 @@ class MainUI(tk.Tk):
         self.trainer_win.grab_set()
     
         settings = UM.load_settings()
-        self.data_index_path = os.path.normpath(settings["DATA_INDEX"])
+        self.data_index_path = os.path.normpath(os.path.join(settings["BASE_DIR"], settings["DATA_INDEX"]))
         
         # Create index data if not available
         if not os.path.exists(self.data_index_path):
@@ -172,9 +167,9 @@ class MainUI(tk.Tk):
         self.image_label.pack(pady=5, anchor="center")
     
         # Load image into label
-        image_path = os.path.join(settings['INIT_DATA_PATH'], f"{self.image_index}.png")
-        if self.image_index == count_pngs(settings['INIT_DATA_PATH']):
-            image_path = Path(BASE_DIR / "images" / "ui" / "AllDone.png").resolve()
+        image_path = os.path.join(settings["BASE_DIR"], settings['INIT_DATA_PATH'], f"{self.image_index}.png")
+        if self.image_index == count_pngs(os.path.join(settings["BASE_DIR"], settings['INIT_DATA_PATH'])):
+            image_path = os.path.join(settings["BASE_DIR"], "images", "ui", "AllDone.png")
         
         self.load_image_to_label(self.image_label, image_path)
         
@@ -183,7 +178,7 @@ class MainUI(tk.Tk):
         next_button.pack(side=tk.LEFT, padx=10)
         self.next_button = tk.Button(next_button, text="Confirm & Next", font=("Arial", 12), command=self.handle_next_button)
         self.next_button.pack(pady=20)
-        if self.image_index == count_pngs(self.settings.get('INIT_DATA_PATH', '')):
+        if self.image_index == count_pngs(os.path.join(settings["BASE_DIR"], settings['INIT_DATA_PATH'])):
             self.next_button.config(state=tk.DISABLED)
         if self.image_index == 0:
             self.prev_button.config(state=tk.DISABLED)
@@ -228,7 +223,7 @@ class MainUI(tk.Tk):
         if self.image_index <= 0:
             return
         self.image_index -= 1
-        image_path = os.path.join(f"{self.settings.get('INIT_DATA_PATH', '')}", f"{self.image_index}.png")
+        image_path = os.path.join(self.settings.get("BASE_DIR", ''), self.settings.get('INIT_DATA_PATH', ''), f"{self.image_index}.png")
         self.load_image_to_label(self.image_label, image_path)
         # Read the row value and restore value
         df = pd.read_csv(self.data_index_path)
@@ -263,11 +258,11 @@ class MainUI(tk.Tk):
         df.to_csv(self.data_index_path, index=False)
 
         self.image_index += 1
-        image_path = os.path.join(f"{self.settings.get('INIT_DATA_PATH', '')}", f"{self.image_index}.png")
+        image_path = os.path.join(self.settings.get("BASE_DIR", ''), self.settings.get('INIT_DATA_PATH', ''), f"{self.image_index}.png")
         self.prev_button.config(state=tk.NORMAL)
-        if self.image_index == count_pngs(self.settings.get('INIT_DATA_PATH', '')):
+        if self.image_index == count_pngs(os.path.join(self.settings.get("BASE_DIR", ''), self.settings.get('INIT_DATA_PATH', ''))):
             self.next_button.config(state=tk.DISABLED)
-            image_path = Path(BASE_DIR / "images" / "ui" / "AllDone.png").resolve()
+            image_path = os.path.join(self.settings["BASE_DIR"], "images", "ui", "AllDone.png")
         self.load_image_to_label(self.image_label, image_path)
         match = df["image"] == f"{self.image_index}.png"
         if match.any():
@@ -305,15 +300,16 @@ class MainUI(tk.Tk):
         ML.init_models()
 
         train_loader, _ = ML.construct_dataset(
-            os.path.normpath(settings["DATA_INDEX"]),
-            os.path.normpath(settings["INIT_DATA_PATH"]),
+            os.path.normpath(os.path.join(settings["BASE_DIR"], settings["DATA_INDEX"])),
+            os.path.normpath(os.path.join(settings["BASE_DIR"], settings["PROFILEPATH"], "user_verdicts.csv")),
+            os.path.normpath(os.path.join(settings["BASE_DIR"], settings["INIT_DATA_PATH"])),
             int(settings["IMG_SIZE"]),
             int(settings["BATCH_SIZE"]),
             float(settings["TTS"])
         )
 
         total_epochs = 200
-        model_path = os.path.normpath(settings["MODELPATH"])
+        model_path = os.path.normpath(os.path.join(settings["BASE_DIR"],settings["MODELPATH"]))
 
         accuracy_choice = self.accuracy_var.get()
         if accuracy_choice == "Accurate (500 epochs)":
@@ -377,10 +373,10 @@ class MainUI(tk.Tk):
             self.selected_button = button
 
         self.selected_profile_path = full_path
-        self.settings["MODELPATH"] = full_path
-        self.settings["DATA_INDEX"] = os.path.splitext(full_path)[0] + ".csv"
-        self.settings["PROFILEPATH"] = os.path.dirname(full_path)
-        with open(SETTINGS_PATH, "w") as f:
+        self.settings["MODELPATH"] = full_path[len(self.settings["BASE_DIR"])+1:]
+        self.settings["DATA_INDEX"] = os.path.splitext(self.settings["MODELPATH"])[0] + ".csv"
+        self.settings["PROFILEPATH"] = os.path.dirname(full_path)[len(self.settings["BASE_DIR"])+1:]
+        with open(os.path.join(self.settings["BASE_DIR"], "utils", "settings.json"), "w") as f:
             json.dump(self.settings, f, indent=4)
 
         self.update_right_panel(full_path)
@@ -391,7 +387,7 @@ class MainUI(tk.Tk):
         name = simpledialog.askstring("New Profile", "Enter profile name:")
         if name:
             full_name = name + ".h5"
-            full_path = os.path.normpath(os.path.join(WEIGHT_FOLDER, name, full_name))
+            full_path = os.path.normpath(os.path.join(self.weightfolder, name, full_name))
             os.makedirs(os.path.dirname(full_path), exist_ok=True)
             open(full_path, "a").close()
             self.refresh_profile_buttons()
@@ -401,8 +397,8 @@ def count_pngs(folder_path):
     return len([f for f in os.listdir(folder_path) if f.lower().endswith('.png')])
 
 if __name__ == "__main__":
-    if not os.path.exists(WEIGHT_FOLDER):
-        os.makedirs(WEIGHT_FOLDER)
+    if not os.path.exists(self.weightfolder):
+        os.makedirs(self.weightfolder)
 
     app = MainUI()
     app.mainloop()

@@ -103,7 +103,7 @@ def wait_for_login_callback(driver, loaded_model):
 
         with open(prediction_csv_path, "w", newline="") as file:
             writer = csv.writer(file)
-            writer.writerow(["profile","image","predicted_attractiveness","final_decision"])
+            writer.writerow(["profile","image","race_score","obesity_score","predicted_attractiveness","final_decision"])
             for i in range(max_profile_number):
                 writer.writerow(existing_rows[num_profiles - max_profile_number + i])
             # Remove the no longer recorded profiles
@@ -134,7 +134,7 @@ def wait_for_login_callback(driver, loaded_model):
         if not os.path.exists(prediction_csv_path):
             with open(prediction_csv_path, "w", newline="") as file:
                 writer = csv.writer(file)
-                writer.writerow(["profile","image","predicted_attractiveness","final_decision"])
+                writer.writerow(["profile","image","race_score","obesity_score","predicted_attractiveness","final_decision"])
         clear_overflow_profile(prediction_csv_path, settings["MAX_PROFILE_STORED"])
         with open(prediction_csv_path, "a+", newline="") as file:
             writer = csv.writer(file)
@@ -155,7 +155,7 @@ def wait_for_login_callback(driver, loaded_model):
                 # make a prediction on this profile
                 profile_dataloader = ML.load_images_for_prediction_dataloader(datafp, int(settings["IMG_SIZE"]), profile)
                 # Make predictions for all images in the DataLoader
-                raw_predictions = ML.predict(loaded_model, profile_dataloader)
+                raw_predictions, race_scores, obesity_scores = ML.predict(loaded_model, profile_dataloader)
                 print("predicted scores " + str(raw_predictions))
     
                 # Decide based on the continuous predictions
@@ -170,7 +170,7 @@ def wait_for_login_callback(driver, loaded_model):
                 if image_files:
                     idx = random.randint(0, len(image_files) - 1)
                     image_file = image_files[idx]
-                    writer.writerow([profile, image_file, raw_predictions[idx], decision])  # add other fields if needed
+                    writer.writerow([profile, image_file, race_scores[idx], obesity_scores[idx], raw_predictions[idx], decision])  # add other fields if needed
                 file.flush()
                 clear_overflow_profile(prediction_csv_path, settings["MAX_PROFILE_STORED"])
 
