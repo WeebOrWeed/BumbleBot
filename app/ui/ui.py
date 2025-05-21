@@ -194,7 +194,12 @@ class MainUI(tk.Tk):
     
         self.progress_bar = None
         self.epoch_label = None
-
+        # Display how many user verdicts you have if you had made hand adjustments before
+        verdict_path = os.path.join(settings["BASE_DIR"], settings["PROFILEPATH"], "user_verdicts.csv")
+        if os.path.exists(verdict_path):
+            df = pd.read_csv(verdict_path)
+            feedbackNum = len(df)
+            tk.Label(self.trainer_win, text=f"You also made {feedbackNum} feedbacks that will go together into the training process.", font=("Arial", 10)).pack(pady=10)
         # Accuracy selection
         accuracy_frame = tk.Frame(self.trainer_win)
         accuracy_frame.pack(pady=10)
