@@ -11,10 +11,10 @@ import json # For storing metadata if needed
 # Use environment variables for STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, etc.
 # For local testing, you can put them here, but for App Engine, configure them
 # in app.yaml or as environment variables.
-STRIPE_PUBLISHABLE_KEY = os.environ.get("STRIPE_PUBLISHABLE_KEY", "pk_test_51RR6ziQYrsgIyvPmELFVZyFR1d8EJr37NZlCnmotzF8kDzXk6bJGkViqnVuCrW3DYqIqGMGtGtNrZ7EsbRJ29yI700hrqlYa8D")
-STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "sk_test_51RR6ziQYrsgIyvPmGwjgq833pM7cc0dCEH758hw0juZR7ShHvhEXG89UTM5rVmwHwgdmhCJrd6AWTMeXQRCzEnPY005YxTuERR")
-STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "whsec_c09fecb2e00cca4ebad5185559b00431ca029269d0aa0530978b68d0927f2002") # From Stripe Dashboard webhook settings
-STRIPE_PREMIUM_PRICE_ID = os.environ.get("STRIPE_PREMIUM_PRICE_ID", "price_1RR74UQYrsgIyvPmAshepzTl")
+STRIPE_PUBLISHABLE_KEY = os.environ.get("STRIPE_PUBLISHABLE_KEY", "pk_test")
+STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "sk_test")
+STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "whsec") # From Stripe Dashboard webhook settings
+STRIPE_PREMIUM_PRICE_ID = os.environ.get("STRIPE_PREMIUM_PRICE_ID", "price")
 
 stripe.api_key = STRIPE_SECRET_KEY
 
