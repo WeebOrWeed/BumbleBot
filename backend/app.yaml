@@ -1,0 +1,21 @@
+# app.yaml
+runtime: python39 # Or python310, python311 etc., depending on your Python version
+env: standard
+
+entrypoint: gunicorn -b :$PORT backend_server:app
+
+# Environment variables for Stripe keys (CRITICAL FOR PRODUCTION)
+env_variables:
+  STRIPE_PUBLISHABLE_KEY: "pk_live_YOUR_STRIPE_PUBLISHABLE_KEY"
+  STRIPE_SECRET_KEY: "sk_live_YOUR_STRIPE_SECRET_KEY"
+  STRIPE_WEBHOOK_SECRET: "whsec_YOUR_STRIPE_WEBHOOK_SECRET"
+  STRIPE_PREMIUM_PRICE_ID: "price_YOUR_LIVE_PRICE_ID"
+
+# You might need to adjust memory/cpu based on anticipated traffic
+# resources:
+#   cpu: 1
+#   memory_gb: 0.5
+
+handlers:
+- url: /.*
+  script: auto

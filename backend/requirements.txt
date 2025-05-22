@@ -1,0 +1,4 @@
+Flask
+Flask-Cors
+stripe
+gunicorn # Required for App Engine Standard environment to serve Flask
