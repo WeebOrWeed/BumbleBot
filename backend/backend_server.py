@@ -51,7 +51,7 @@ def get_db_connection():
 def health_check():
     return "Backend is running!"
 
-@app.route('/api/v1/user/register_or_get_status', methods=['POST'])
+@app.route('/users/register_or_get_status', methods=['POST'])
 def register_or_get_user_status():
     data = request.json
     google_user_id = data.get('google_user_id')
@@ -104,7 +104,7 @@ def register_or_get_user_status():
             return jsonify({"error": "User with this Google ID already exists (race condition?)"}), 409
 
 
-@app.route('/api/v1/stripe/create-checkout-session', methods=['POST'])
+@app.route('/stripe/create-checkout-session', methods=['POST'])
 def create_checkout_session_backend():
     data = request.json
     google_user_id = data.get('google_user_id')
@@ -172,6 +172,7 @@ def stripe_cancel_page():
     # This page is shown to the user in their browser if they cancel payment.
     return "<h1 style='color: orange;'>Subscription Canceled.</h1><p>You have canceled the subscription process. You can close this window and return to the application.</p>"
 
+# Called by Stripe, handles significant user events
 @app.route('/stripe-webhook', methods=['POST'])
 def stripe_webhook():
     payload = request.get_data()
@@ -258,7 +259,18 @@ def stripe_webhook():
 
     return 'Success', 200
 
-@app.route('/api/v1/stripe/create-customer-portal-session', methods=['POST'])
+@app.route('/stripe-portal-return')
+def stripe_portal_return_page():
+    # This page is shown to the user in their browser after returning from the Customer Portal.
+    # The actual database update for subscription status (cancellation, update, etc.)
+    # would have happened via webhooks (e.g., customer.subscription.updated) already.
+    return """
+    <h1 style='color: blue;'>Subscription Management Complete!</h1>
+    <p>You have returned from the Stripe Customer Portal. Any changes you made will be reflected in the application shortly.</p>
+    <p>You can now close this window and return to the application.</p>
+    """
+
+@app.route('/stripe/create-customer-portal-session', methods=['POST'])
 def create_customer_portal_session_backend():
     data = request.json
     google_user_id = data.get('google_user_id')
@@ -280,7 +292,7 @@ def create_customer_portal_session_backend():
         portalSession = stripe.billing_portal.Session.create(
             customer=customer_id,
             # return_url must point to your *backend's* public URL
-            return_url=f'https://{os.environ.get("GAE_APPLICATION", "localhost:8080")}/stripe-success'
+            return_url=f'https://{os.environ.get("GAE_APPLICATION", "localhost:8080")}/stripe-portal-return'
         )
         return jsonify({'url': portalSession.url})
     except Exception as e:
