@@ -55,7 +55,7 @@ def health_check():
 def register_or_get_user_status():
     data = request.json
     google_user_id = data.get('google_user_id')
-    email = data.get('email')
+    email = data.get('user_email')
 
     if not google_user_id or not email:
         return jsonify({"error": "Missing user_id or email"}), 400
@@ -103,7 +103,7 @@ def register_or_get_user_status():
             conn.close()
             return jsonify({"error": "User with this Google ID already exists (race condition?)"}), 409
 
-
+# Checking out, create checkout url
 @app.route('/stripe/create-checkout-session', methods=['POST'])
 def create_checkout_session_backend():
     data = request.json
@@ -137,6 +137,8 @@ def create_checkout_session_backend():
         else:
             print(f"Using existing Stripe Customer: {customer_id} for Google user {google_user_id}")
 
+        is_local = os.environ.get("GAE_APPLICATION") is None
+        protocol = "http://" if is_local else "https://"
         checkout_session = stripe.checkout.Session.create(
             customer=customer_id,
             line_items=[
@@ -148,8 +150,8 @@ def create_checkout_session_backend():
             mode='subscription',
             # success_url and cancel_url must point to your *backend's* public URL
             # The Tkinter app will open this URL for the user.
-            success_url=f'https://{os.environ.get("GAE_APPLICATION", "localhost:8080")}/stripe-success?session_id={{CHECKOUT_SESSION_ID}}&google_user_id={google_user_id}',
-            cancel_url=f'https://{os.environ.get("GAE_APPLICATION", "localhost:8080")}/stripe-cancel',
+            success_url=f'{protocol}{os.environ.get("GAE_APPLICATION", "localhost:8080")}/stripe-success',
+            cancel_url=f'{protocol}{os.environ.get("GAE_APPLICATION", "localhost:8080")}/stripe-cancel',
             metadata={'google_user_id': google_user_id} # Important for webhooks
         )
         return jsonify({'id': checkout_session.id, 'url': checkout_session.url})
@@ -159,9 +161,6 @@ def create_checkout_session_backend():
 
 @app.route('/stripe-success')
 def stripe_success_page():
-    session_id = request.args.get('session_id')
-    google_user_id = request.args.get('google_user_id')
-
     # This page is shown to the user in their browser after successful payment.
     # It just gives them confirmation and tells them to return to the app.
     # The actual database update for subscription status happens via webhook!
@@ -172,9 +171,11 @@ def stripe_cancel_page():
     # This page is shown to the user in their browser if they cancel payment.
     return "<h1 style='color: orange;'>Subscription Canceled.</h1><p>You have canceled the subscription process. You can close this window and return to the application.</p>"
 
+# Listen to checkout page response
 # Called by Stripe, handles significant user events
 @app.route('/stripe-webhook', methods=['POST'])
 def stripe_webhook():
+    print("Webhook triggered!")
     payload = request.get_data()
     sig_header = request.headers.get('stripe-signature')
     event = None
@@ -288,11 +289,14 @@ def create_customer_portal_session_backend():
     if not customer_id:
         return jsonify({"error": "Stripe customer not found for this user."}), 404
 
+    is_local = os.environ.get("GAE_APPLICATION") is None
+    protocol = "http://" if is_local else "https://"
+
     try:
         portalSession = stripe.billing_portal.Session.create(
             customer=customer_id,
             # return_url must point to your *backend's* public URL
-            return_url=f'https://{os.environ.get("GAE_APPLICATION", "localhost:8080")}/stripe-portal-return'
+            return_url=f'{protocol}{os.environ.get("GAE_APPLICATION", "localhost:8080")}/stripe-portal-return'
         )
         return jsonify({'url': portalSession.url})
     except Exception as e:

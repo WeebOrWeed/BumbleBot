@@ -118,10 +118,10 @@ class Application(tk.Tk):
             'user_email': self.user_profile.get('email')
         })
         response.raise_for_status() # Raise an exception for HTTP errors
-        session_data = response.json()
-        subscription_status = session_data.get('user_data',{}).get("is_subscribed", False)
+        self.user_stripe_data = response.json()
+        self.is_subscribed = self.user_stripe_data.get('user_data',{}).get("is_subscribed", False)
 
-        if subscription_status:
+        if self.is_subscribed:
             self.show_main_page()
         else:
             self.show_subscribe_page()
@@ -163,7 +163,6 @@ class Application(tk.Tk):
 
             if checkout_url:
                 webbrowser.open_new(checkout_url)
-                messagebox.showinfo("Redirecting to Stripe", "A new browser window will open for payment. Please complete the subscription there.")
                 # Start aggressive polling in a background thread
                 self.show_waiting_for_subscription_page() # Show a waiting UI
                 self.polling_active = True
@@ -206,15 +205,15 @@ class Application(tk.Tk):
         while self.polling_active and attempt < max_attempts:
             try:
                 response = requests.post(
-                    f"{BACKEND_API_URL}/api/v1/user/register_or_get_status",
+                    "http://localhost:8080/users/register_or_get_status",
                     json={
                         "google_user_id": self.current_google_user_id,
-                        "email": self.user_profile.get('email')
+                        "user_email": self.user_profile.get('email')
                     }
                 )
                 response.raise_for_status()
-                data = response.json()
-                user_backend_data = data.get("user_data", {})
+                self.user_stripe_data = response.json()
+                user_backend_data = self.user_stripe_data.get("user_data", {})
                 current_is_subscribed = user_backend_data.get('is_subscribed', False)
     
                 if current_is_subscribed:
@@ -263,10 +262,8 @@ class Application(tk.Tk):
         ttk.Label(self.main_frame, text=f"Welcome, {self.user_profile.get('name', 'User')}!", font=("Arial", 18, "bold")).pack(pady=20)
         ttk.Label(self.main_frame, text=f"Email: {self.user_profile.get('email', 'N/A')}").pack(pady=5)
         ttk.Label(self.main_frame, text=f"Google ID: {self.user_profile.get('id', 'N/A')}").pack(pady=5)
-        ttk.Label(self.main_frame, text=f"Subscription Status: {'Active' if user_info.get('is_subscribed') else 'Inactive'}", font=("Arial", 12)).pack(pady=10)
+        ttk.Label(self.main_frame, text=f"Subscription Status: {'Active' if self.is_subscribed else 'Inactive'}", font=("Arial", 12)).pack(pady=10)
         
-        ttk.Label(self.main_frame, text="\nThis is your secure main application content, only for subscribers!").pack(pady=20)
-
         # Link to Stripe Customer Portal (optional but highly recommended)
         manage_subscription_button = ttk.Button(self.main_frame, text="Manage Subscription (Stripe Portal)", command=self.open_customer_portal)
         manage_subscription_button.pack(pady=10)
@@ -279,7 +276,7 @@ class Application(tk.Tk):
             messagebox.showerror("Error", "User not logged in.")
             return
 
-        customer_id = user_info.get('stripe_customer_id')
+        customer_id = self.user_stripe_data.get('stripe_customer_id')
 
         if not customer_id:
             messagebox.showinfo("Info", "You don't have a Stripe customer record yet. Please subscribe first.")
