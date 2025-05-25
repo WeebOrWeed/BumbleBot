@@ -68,13 +68,37 @@ def register_or_get_user_status():
     if user:
         # User exists, return their current status
         user_dict = dict(user) # Convert Row object to dict
+        customer_id = user_dict['stripe_customer_id']
+        # Double verify with Stripe that this person still has subscription valid
+        is_subscribed = False
+        try:
+            subscriptions = stripe.Subscription.list(customer=customer_id, status='all') # Or 'active', 'canceled', etc.
+            for subscription in subscriptions.data:
+                if subscription.status == 'active':
+                    is_subscribed = True
+                    break  # You only need to find one active subscription
+            
+            cursor.execute(
+                "UPDATE users SET is_subscribed = ? WHERE google_user_id = ?",
+                (is_subscribed, google_user_id)
+            )
+            conn.commit()
+            if is_subscribed:
+                print(f"Customer {customer_id} has an active subscription.")
+            else:
+                print(f"Customer {customer_id} does not have an active subscription.")
+        except stripe.error.StripeError as e:
+            print(f"Error retrieving customer: {e}")
+            conn.close()
+            return jsonify({"error": "User is not registered with Stripe, please contact customer support."}), 400
+        
         conn.close()
         return jsonify({
             "status": "success",
             "user_data": {
                 "google_user_id": user_dict['google_user_id'],
                 "email": user_dict['email'],
-                "is_subscribed": bool(user_dict['is_subscribed']), # Convert int to bool
+                "is_subscribed": is_subscribed,
                 "stripe_customer_id": user_dict['stripe_customer_id'],
                 "stripe_subscription_id": user_dict['stripe_subscription_id']
             }
@@ -175,7 +199,6 @@ def stripe_cancel_page():
 # Called by Stripe, handles significant user events
 @app.route('/stripe-webhook', methods=['POST'])
 def stripe_webhook():
-    print("Webhook triggered!")
     payload = request.get_data()
     sig_header = request.headers.get('stripe-signature')
     event = None

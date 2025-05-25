@@ -121,30 +121,7 @@ class Application(tk.Tk):
         self.user_stripe_data = response.json()
         self.is_subscribed = self.user_stripe_data.get('user_data',{}).get("is_subscribed", False)
 
-        if self.is_subscribed:
-            self.show_main_page()
-        else:
-            self.show_subscribe_page()
-
-    def show_subscribe_page(self):
-        for widget in self.winfo_children():
-            widget.destroy()
-
-        self.subscribe_frame = ttk.Frame(self, padding="20")
-        self.subscribe_frame.pack(expand=True, fill="both")
-
-        ttk.Label(self.subscribe_frame, text="You are not subscribed.", font=("Arial", 16, "bold")).pack(pady=20)
-        ttk.Label(self.subscribe_frame, text="Please subscribe to access the main features.").pack(pady=10)
-
-        subscribe_button = ttk.Button(self.subscribe_frame, text="Subscribe Now", command=self.open_stripe_checkout)
-        subscribe_button.pack(pady=20)
-        
-        # Optionally, a button to re-check status if they paid externally or on another device
-        check_status_button = ttk.Button(self.subscribe_frame, text="Refresh Subscription Status", command=self.check_subscription_status)
-        check_status_button.pack(pady=10)
-
-        logout_button = ttk.Button(self.subscribe_frame, text="Logout", command=self.logout)
-        logout_button.pack(pady=20)
+        self.show_main_page()
 
     def open_stripe_checkout(self):
         if not self.current_google_user_id or not self.user_profile:
@@ -166,7 +143,7 @@ class Application(tk.Tk):
                 # Start aggressive polling in a background thread
                 self.show_waiting_for_subscription_page() # Show a waiting UI
                 self.polling_active = True
-                self.polling_thread = threading.Thread(target=self._poll_for_subscription_status, daemon=True)
+                self.polling_thread = threading.Thread(target=self._poll_for_subscription_status, kwargs={'lookingForStatus': True}, daemon=True)
                 self.polling_thread.start()
             else:
                 messagebox.showerror("Stripe Error", "Could not get Stripe Checkout URL.")
@@ -198,7 +175,7 @@ class Application(tk.Tk):
             # will cause it to exit on its next loop iteration.
         self.check_subscription_status() # Re-evaluate status immediately
 
-    def _poll_for_subscription_status(self):
+    def _poll_for_subscription_status(self, lookingForStatus):
         # This runs in a separate thread
         max_attempts = 60 # Poll for up to 60 seconds (1 second interval)
         attempt = 0
@@ -216,7 +193,7 @@ class Application(tk.Tk):
                 user_backend_data = self.user_stripe_data.get("user_data", {})
                 current_is_subscribed = user_backend_data.get('is_subscribed', False)
     
-                if current_is_subscribed:
+                if current_is_subscribed == lookingForStatus:
                     # Subscription confirmed! Update UI on the main Tkinter thread
                     self.after(0, lambda: self._handle_polling_success(current_is_subscribed))
                     self.polling_active = False # Stop polling
@@ -260,13 +237,23 @@ class Application(tk.Tk):
         self.main_frame.pack(expand=True, fill="both")
 
         ttk.Label(self.main_frame, text=f"Welcome, {self.user_profile.get('name', 'User')}!", font=("Arial", 18, "bold")).pack(pady=20)
-        ttk.Label(self.main_frame, text=f"Email: {self.user_profile.get('email', 'N/A')}").pack(pady=5)
-        ttk.Label(self.main_frame, text=f"Google ID: {self.user_profile.get('id', 'N/A')}").pack(pady=5)
+        # ttk.Label(self.main_frame, text=f"Email: {self.user_profile.get('email', 'N/A')}").pack(pady=5)
+        # ttk.Label(self.main_frame, text=f"Google ID: {self.user_profile.get('id', 'N/A')}").pack(pady=5)
         ttk.Label(self.main_frame, text=f"Subscription Status: {'Active' if self.is_subscribed else 'Inactive'}", font=("Arial", 12)).pack(pady=10)
         
-        # Link to Stripe Customer Portal (optional but highly recommended)
-        manage_subscription_button = ttk.Button(self.main_frame, text="Manage Subscription (Stripe Portal)", command=self.open_customer_portal)
-        manage_subscription_button.pack(pady=10)
+        if not self.is_subscribed:
+            ttk.Label(self.main_frame, text="Please subscribe to access the main features.").pack(pady=10)
+
+            subscribe_button = ttk.Button(self.main_frame, text="Subscribe Now", command=self.open_stripe_checkout)
+            subscribe_button.pack(pady=20)
+        
+        # Optionally, a button to re-check status if they paid externally or on another device
+        check_status_button = ttk.Button(self.main_frame, text="Refresh Subscription Status", command=self.check_subscription_status)
+        check_status_button.pack(pady=10)
+        
+        if self.is_subscribed: # Link to Stripe Customer Portal (optional but highly recommended)
+            manage_subscription_button = ttk.Button(self.main_frame, text="Cancel Subscription (Stripe Portal)", command=self.open_customer_portal)
+            manage_subscription_button.pack(pady=10)
 
         logout_button = ttk.Button(self.main_frame, text="Logout", command=self.logout)
         logout_button.pack(pady=20)
@@ -276,12 +263,13 @@ class Application(tk.Tk):
             messagebox.showerror("Error", "User not logged in.")
             return
 
-        customer_id = self.user_stripe_data.get('stripe_customer_id')
+        customer_id = self.user_stripe_data.get("user_data", {}).get('stripe_customer_id')
 
         if not customer_id:
             messagebox.showinfo("Info", "You don't have a Stripe customer record yet. Please subscribe first.")
             return
 
+        self.show_waiting_for_subscription_page()
         try:
             response = requests.post('http://localhost:8080/stripe/create-customer-portal-session', json={
                 'google_user_id': self.current_google_user_id,
@@ -290,9 +278,16 @@ class Application(tk.Tk):
             response.raise_for_status() # Raise an exception for HTTP errors
             session_data = response.json()
             portalSessionUrl = session_data.get('url')
-            # Create a Customer Portal session
-            webbrowser.open_new(portalSessionUrl)
-            messagebox.showinfo("Stripe Customer Portal", "A new browser window will open to manage your subscription.")
+            if portalSessionUrl:
+                 # Create a Customer Portal session
+                webbrowser.open_new(portalSessionUrl)
+                # Start aggressive polling in a background thread
+                self.show_waiting_for_subscription_page() # Show a waiting UI
+                self.polling_active = True
+                self.polling_thread = threading.Thread(target=self._poll_for_subscription_status, kwargs={'lookingForStatus': False}, daemon=True)
+                self.polling_thread.start()
+            else:
+                messagebox.showerror("Stripe Error", "Could not get Stripe Portal Session URL.")
         except Exception as e:
             messagebox.showerror("Stripe Portal Error", f"Could not open customer portal: {e}")
 
