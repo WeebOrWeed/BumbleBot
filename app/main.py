@@ -1,5 +1,6 @@
 # this method loads all the files and then based on the markers it switches between all the files
-from ui.ui import MainUI
+from ui.auth_ui import AuthUI
+from ui.auth_ui import MainUI
 import os
 import tkinter as tk
 from pathlib import Path
@@ -17,8 +18,11 @@ def main():
     settings["BASE_DIR"] = str(BASE_DIR)
     with open(SETTINGS_PATH, "w") as f:
         json.dump(settings, f, indent=4)
-    app = MainUI()
-    app.mainloop()
+    auth_app = AuthUI()
+    auth_app.mainloop()
+    if auth_app.open_bumble_bot:
+        bumblebot_app = MainUI()
+        bumblebot_app.mainloop()
 
 
 if __name__ == "__main__":

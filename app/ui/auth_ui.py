@@ -5,6 +5,8 @@ import webbrowser
 import threading
 import time # For simulating checks
 import requests
+from ui.main_ui import MainUI
+from utils import utilities as UM
 
 # Google OAuth imports (from previous example)
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -13,41 +15,14 @@ from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 
 # --- Configuration ---
-CLIENT_SECRETS_FILE = '..\\configs\\client_secret.json'
+CLIENT_SECRETS_FILE = os.path.join('configs','client_secret.json')
 GOOGLE_SCOPES = ['https://www.googleapis.com/auth/userinfo.profile',
                  'https://www.googleapis.com/auth/userinfo.email', 'openid']
 
-# --- Google OAuth Functions ---
-def get_google_credentials():
-    credentials = None
-    token_file = 'token.json'
 
-    if os.path.exists(token_file):
-        credentials = Credentials.from_authorized_user_file(token_file, GOOGLE_SCOPES)
-
-    if not credentials or not credentials.valid:
-        if credentials and credentials.expired and credentials.refresh_token:
-            try:
-                credentials.refresh(Request())
-            except Exception as e:
-                print(f"Error refreshing Google token: {e}")
-                credentials = None
-        else:
-            flow = InstalledAppFlow.from_client_secrets_file(CLIENT_SECRETS_FILE, GOOGLE_SCOPES)
-            try:
-                credentials = flow.run_local_server(port=0)
-            except Exception as e:
-                messagebox.showerror("Authentication Error", f"Failed to authenticate with Google: {e}")
-                return None
-
-        with open(token_file, 'w') as token:
-            token.write(credentials.to_json())
-            print(f"Google token saved to {token_file}")
-    
-    return credentials
 
 # --- Tkinter Application ---
-class Application(tk.Tk):
+class AuthUI(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Tkinter Google OAuth + Stripe App")
@@ -58,11 +33,42 @@ class Application(tk.Tk):
         self.current_google_user_id = None # Store the current logged-in Google ID
         self.polling_thread = None
         self.polling_active = False
+        self.open_bumble_bot = False
+        self.settings = UM.load_settings()
         self.check_login_status()
 
         # Periodically check subscription status (e.g., every 5 minutes)
         # This is a fallback; webhooks are more immediate
         self.after(300000, self.periodic_subscription_check)
+
+    # --- Google OAuth Functions ---
+    def get_google_credentials(self):
+        credentials = None
+        token_file = 'token.json'
+
+        if os.path.exists(token_file):
+            credentials = Credentials.from_authorized_user_file(token_file, GOOGLE_SCOPES)
+
+        if not credentials or not credentials.valid:
+            if credentials and credentials.expired and credentials.refresh_token:
+                try:
+                    credentials.refresh(Request())
+                except Exception as e:
+                    # print(f"Error refreshing Google token: {e}")
+                    credentials = None
+            else:
+                flow = InstalledAppFlow.from_client_secrets_file(os.path.join(self.settings['BASE_DIR'], CLIENT_SECRETS_FILE), GOOGLE_SCOPES)
+                try:
+                    credentials = flow.run_local_server(port=0)
+                except Exception as e:
+                    messagebox.showerror("Authentication Error", f"Failed to authenticate with Google: {e}")
+                    return None
+
+            with open(token_file, 'w') as token:
+                token.write(credentials.to_json())
+                # print(f"Google token saved to {token_file}")
+
+        return credentials
 
     def check_login_status(self):
         if not self.credentials:
@@ -83,7 +89,7 @@ class Application(tk.Tk):
         google_login_button.pack(pady=10)
 
     def handle_google_login(self):
-        self.credentials = get_google_credentials()
+        self.credentials = self.get_google_credentials()
 
         if self.credentials:
             self.fetch_user_profile_and_proceed()
@@ -97,7 +103,7 @@ class Application(tk.Tk):
             user_info = service.userinfo().get().execute()
             self.user_profile = user_info
             self.current_google_user_id = self.user_profile.get('id')
-            print(f"User Profile: {self.user_profile}")
+            # print(f"User Profile: {self.user_profile}")
 
             self.check_subscription_status()
 
@@ -199,17 +205,17 @@ class Application(tk.Tk):
                     self.polling_active = False # Stop polling
                     return
     
-                print(f"Polling attempt {attempt+1}: Not subscribed yet.")
+                # print(f"Polling attempt {attempt+1}: Not subscribed yet.")
                 time.sleep(1) # Wait for 1 second before next poll
                 attempt += 1
     
             except requests.exceptions.RequestException as e:
-                print(f"Polling network error: {e}")
+                # print(f"Polling network error: {e}")
                 # Don't stop polling immediately on network error, might be temporary
                 time.sleep(5) # Wait longer on error
                 attempt += 1 # Still count attempts
             except Exception as e:
-                print(f"Polling unexpected error: {e}")
+                # print(f"Polling unexpected error: {e}")
                 self.polling_active = False # Stop polling on unexpected error
                 self.after(0, lambda: messagebox.showerror("Polling Error", f"An error occurred during subscription check: {e}"))
                 return
@@ -254,9 +260,16 @@ class Application(tk.Tk):
         if self.is_subscribed: # Link to Stripe Customer Portal (optional but highly recommended)
             manage_subscription_button = ttk.Button(self.main_frame, text="Cancel Subscription (Stripe Portal)", command=self.open_customer_portal)
             manage_subscription_button.pack(pady=10)
+            # Button to close the Login app and open the BumbleBot app
+            open_bumblebot_button = ttk.Button(self.main_frame, text="Open BumbleBot", command=self.open_bumble_bot_page)
+            open_bumblebot_button.pack(pady=10)
 
         logout_button = ttk.Button(self.main_frame, text="Logout", command=self.logout)
         logout_button.pack(pady=20)
+
+    def open_bumble_bot_page(self):
+        self.open_bumble_bot = True
+        self.destroy()
 
     def open_customer_portal(self):
         if not self.current_google_user_id:
@@ -309,11 +322,11 @@ class Application(tk.Tk):
             # This is a fallback. Webhooks are more reliable.
             # You'd ideally make an API call to Stripe to get the actual subscription status
             # based on self.current_google_user_id's stripe_customer_id and stripe_subscription_id.
-            print("Performing periodic subscription check...")
+            # print("Performing periodic subscription check...")
             self.check_subscription_status()
         self.after(300000, self.periodic_subscription_check) # Schedule next check
 
 
 if __name__ == "__main__":
-    app_instance = Application()
+    app_instance = AuthUI()
     app_instance.mainloop()
