@@ -1,0 +1,31 @@
+# .gitignore
+
+# Python specific ignores
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+build/
+develop-eggs/
+dist/
+eggs/
+.eggs/
+*.egg-info/
+.coverage
+.tox/
+.pytest_cache/
+.mypy_cache/
+
+# IDE specific ignores (e.g., VS Code, PyCharm)
+.vscode/
+.idea/
+
+# App Engine specific ignores (if any generated files)
+# .gcloudignore is often used for App Engine, but .gitignore is for Git itself.
+
+# Ignore sensitive files or local configuration
+app/token.json
