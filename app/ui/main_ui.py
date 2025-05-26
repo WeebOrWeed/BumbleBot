@@ -3,11 +3,13 @@ from tkinter import simpledialog
 from tkinter.ttk import Progressbar
 from tkinter import filedialog
 from tkinter import Scale
+from tkinter import ttk, messagebox
 import os
 import io
 import sys
 import json
 import csv
+import requests
 from automation import makePredictions as MP
 from model import machineLearning as ML
 from utils import utilities as UM
@@ -18,15 +20,18 @@ import pandas as pd
 from pathlib import Path
 from ui.reviewPanel import ReviewPanel
 
-class MainUI(tk.Tk):
-    def __init__(self):
-        super().__init__()
+BASE_URL = 'https://bumblebot-460521.uc.r.appspot.com/'
+
+class MainUI(tk.Toplevel):
+    def __init__(self, parent, onDestroy, userProfile):
+        super().__init__(parent)
         self.title("Weight Profile Selector")
         self.geometry("1920x1080")
 
         self.selected_button = None
         self.selected_profile_path = None
         self.image_index = 0
+        self.user_profile = userProfile
 
         self.settings = UM.load_settings()
         self.modelpath = os.path.normpath(self.settings.get("MODELPATH", ""))
@@ -48,7 +53,34 @@ class MainUI(tk.Tk):
 
         self.profile_buttons = {}
         self.refresh_profile_buttons()
+        self.get_back_to_auth = False
+        # Bind to the <Destroy> event
+        # This handler will be called *just before* the widget is fully destroyed
+        self.bind("<Destroy>", onDestroy)
+        # Periodically check subscription status (e.g., every 1 hour)
+        # This is a fallback; webhooks are more immediate
+        self.after(3600000, self.periodic_subscription_check)
 
+    def periodic_subscription_check(self):
+        if not self.winfo_exists(): # If our window is already destroyed we don't need to check anymore
+            return
+        if self.user_profile.get('id') and self.user_profile.get('email'):
+            try:
+                # Make a request to your Flask server to get customer information
+                response = requests.post(f'{BASE_URL}/users/register_or_get_status', json={
+                    'google_user_id': self.user_profile.get('id'),
+                    'user_email': self.user_profile.get('email')
+                })
+                response.raise_for_status() # Raise an exception for HTTP errors
+                user_stripe_data = response.json()
+                is_subscribed = user_stripe_data.get('user_data',{}).get("is_subscribed", False)
+                if not is_subscribed:
+                    # Subscription expired, return to the auth page
+                    self.get_back_to_auth = True
+                    self.destroy()
+            except Exception as e:
+                messagebox.showerror("API Error", f"Could not fetch user profile: {e}")
+        self.after(3600000, self.periodic_subscription_check) # Schedule next check
 
     def refresh_profile_buttons(self):
         self.selected_button = None
@@ -400,10 +432,3 @@ class MainUI(tk.Tk):
 
 def count_pngs(folder_path):
     return len([f for f in os.listdir(folder_path) if f.lower().endswith('.png')])
-
-if __name__ == "__main__":
-    if not os.path.exists(self.weightfolder):
-        os.makedirs(self.weightfolder)
-
-    app = MainUI()
-    app.mainloop()

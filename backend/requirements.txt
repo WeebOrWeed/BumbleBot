@@ -1,4 +1,7 @@
 Flask
-Flask-Cors
+Flask-SQLAlchemy
+psycopg2-binary
 stripe
-gunicorn # Required for App Engine Standard environment to serve Flask
+Flask-Cors
+gunicorn 
+python-dotenv

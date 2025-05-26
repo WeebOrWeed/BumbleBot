@@ -5,7 +5,6 @@ import webbrowser
 import threading
 import time # For simulating checks
 import requests
-from ui.main_ui import MainUI
 from utils import utilities as UM
 
 # Google OAuth imports (from previous example)
@@ -18,13 +17,11 @@ from googleapiclient.discovery import build
 CLIENT_SECRETS_FILE = os.path.join('configs','client_secret.json')
 GOOGLE_SCOPES = ['https://www.googleapis.com/auth/userinfo.profile',
                  'https://www.googleapis.com/auth/userinfo.email', 'openid']
+BASE_URL = 'https://bumblebot-460521.uc.r.appspot.com/'
 
-
-
-# --- Tkinter Application ---
-class AuthUI(tk.Tk):
-    def __init__(self):
-        super().__init__()
+class AuthUI(tk.Toplevel):
+    def __init__(self, parent, onDestroy):
+        super().__init__(parent)
         self.title("Tkinter Google OAuth + Stripe App")
         self.geometry("800x600")
 
@@ -36,6 +33,9 @@ class AuthUI(tk.Tk):
         self.open_bumble_bot = False
         self.settings = UM.load_settings()
         self.check_login_status()
+        # Bind to the <Destroy> event
+        # This handler will be called *just before* the widget is fully destroyed
+        self.bind("<Destroy>", onDestroy)
 
         # Periodically check subscription status (e.g., every 5 minutes)
         # This is a fallback; webhooks are more immediate
@@ -119,7 +119,7 @@ class AuthUI(tk.Tk):
             return
 
         # Make a request to your Flask server to get customer information
-        response = requests.post('http://localhost:8080/users/register_or_get_status', json={
+        response = requests.post(f'{BASE_URL}/users/register_or_get_status', json={
             'google_user_id': self.current_google_user_id,
             'user_email': self.user_profile.get('email')
         })
@@ -136,7 +136,7 @@ class AuthUI(tk.Tk):
 
         try:
             # Make a request to your Flask server to create a Checkout Session
-            response = requests.post('http://localhost:8080/stripe/create-checkout-session', json={
+            response = requests.post(f'{BASE_URL}/stripe/create-checkout-session', json={
                 'google_user_id': self.current_google_user_id,
                 'user_email': self.user_profile.get('email')
             })
@@ -188,7 +188,7 @@ class AuthUI(tk.Tk):
         while self.polling_active and attempt < max_attempts:
             try:
                 response = requests.post(
-                    "http://localhost:8080/users/register_or_get_status",
+                    f"{BASE_URL}/users/register_or_get_status",
                     json={
                         "google_user_id": self.current_google_user_id,
                         "user_email": self.user_profile.get('email')
@@ -284,7 +284,7 @@ class AuthUI(tk.Tk):
 
         self.show_waiting_for_subscription_page()
         try:
-            response = requests.post('http://localhost:8080/stripe/create-customer-portal-session', json={
+            response = requests.post(f'{BASE_URL}/stripe/create-customer-portal-session', json={
                 'google_user_id': self.current_google_user_id,
                 'user_email': self.user_profile.get('email')
             })
@@ -318,6 +318,8 @@ class AuthUI(tk.Tk):
         self.show_login_page()
 
     def periodic_subscription_check(self):
+        if not self.winfo_exists(): # If our window is already destroyed we don't need to check anymore
+            return
         if self.current_google_user_id:
             # This is a fallback. Webhooks are more reliable.
             # You'd ideally make an API call to Stripe to get the actual subscription status

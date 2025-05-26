@@ -1,21 +1,33 @@
 # app.yaml
-runtime: python39 # Or python310, python311 etc., depending on your Python version
-env: standard
+runtime: python39 # Or python310, python311, etc.
+env: standard    # For App Engine Standard Environment
 
-entrypoint: gunicorn -b :$PORT backend_server:app
+entrypoint: gunicorn -b :$PORT backend_server:app # Important: backend_server:app
 
-# Environment variables for Stripe keys (CRITICAL FOR PRODUCTION)
+# If you need more memory or CPU (adjust as needed)
+instance_class: F1 # F1 is default, F2/F4 are stronger.
+automatic_scaling:
+  min_instances: 0 # Allows scaling down to zero to save costs
+  max_instances: 1 # Start with 1 instance, adjust based on traffic
+  min_idle_instances: automatic
+  max_idle_instances: automatic
+  target_cpu_utilization: 0.6
+  target_throughput_utilization: 0.6
+
 env_variables:
-  STRIPE_PUBLISHABLE_KEY: "pk_live_YOUR_STRIPE_PUBLISHABLE_KEY"
-  STRIPE_SECRET_KEY: "sk_live_YOUR_STRIPE_SECRET_KEY"
-  STRIPE_WEBHOOK_SECRET: "whsec_YOUR_STRIPE_WEBHOOK_SECRET"
-  STRIPE_PREMIUM_PRICE_ID: "price_YOUR_LIVE_PRICE_ID"
+  STRIPE_PUBLISHABLE_KEY: pk_test_51RR6ziQYrsgIyvPmELFVZyFR1d8EJr37NZlCnmotzF8kDzXk6bJGkViqnVuCrW3DYqIqGMGtGtNrZ7EsbRJ29yI700hrqlYa8D
+  STRIPE_SECRET_KEY: sk_test_51RR6ziQYrsgIyvPmGwjgq833pM7cc0dCEH758hw0juZR7ShHvhEXG89UTM5rVmwHwgdmhCJrd6AWTMeXQRCzEnPY005YxTuERR
+  STRIPE_WEBHOOK_SECRET: whsec_5fPmmhyob86yXWRnjO8CFzijB9Njsacm
+  STRIPE_PREMIUM_PRICE_ID: price_1RR74UQYrsgIyvPmAshepzTl
+  
+  # Cloud SQL connection details
+  DB_USER: 'bumblebot_app_user' # Your Cloud SQL user
+  DB_PASSWORD: 'aaa' # Your Cloud SQL user's password
+  DB_NAME: 'bumble_bot_db' # Your Cloud SQL database name
+  # Format: PROJECT_ID:REGION:INSTANCE_ID
+  CLOUD_SQL_CONNECTION_NAME: bumblebot-460521:us-central1:bumble-bot-db
 
-# You might need to adjust memory/cpu based on anticipated traffic
-# resources:
-#   cpu: 1
-#   memory_gb: 0.5
-
-handlers:
-- url: /.*
-  script: auto
+# Cloud SQL connection settings for App Engine Standard
+# This automatically configures the Cloud SQL Proxy
+beta_settings:
+  cloud_sql_instances: bumblebot-460521:us-central1:bumble-bot-db
