@@ -14,20 +14,33 @@ import os
 from PIL import Image
 import argparse
 import ast
+import sys
 
 model_fair_7 = None
 model_fair_4 = None
 trans = None
 device = None
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-model_path_multi_7 = os.path.join(BASE_DIR, 'fair_face_models', 'res34_fair_align_multi_7_20190809.pt')
-model_path_multi_4 = os.path.join(BASE_DIR, 'fair_face_models', 'res34_fair_align_multi_4_20190809.pt')
+
+# --- Your existing resource_path function ---
+def resource_path(relative_path):
+    """ Get absolute path to resource, works for dev and for PyInstaller """
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        # If not running as a bundled executable (e.g., during development)
+        # Assume relative_path is relative to the script's directory (app/)
+        base_path = os.path.abspath(os.path.dirname(__file__))
+
+    return os.path.join(base_path, relative_path)
+model_path_multi_7 = resource_path(os.path.join('fair_face_models', 'res34_fair_align_multi_7_20190809.pt'))
+model_path_multi_4 = resource_path(os.path.join('fair_face_models', 'res34_fair_align_multi_4_20190809.pt'))
 
 # Returns all the faces in iamge
 def detect_faces_of_image(image, default_max_size=800, size = 300, padding = 0.25):
-    cnn_face_detector = dlib.cnn_face_detection_model_v1(os.path.join(BASE_DIR, 'dlib_models', 'mmod_human_face_detector.dat')) # this is too slow
+    cnn_face_detector = dlib.cnn_face_detection_model_v1(resource_path(os.path.join('dlib_models', 'mmod_human_face_detector.dat'))) # this is too slow
     # cnn_face_detector = dlib.get_frontal_face_detector() # faster model but less accurate
-    sp = dlib.shape_predictor(os.path.join(BASE_DIR, 'dlib_models', 'shape_predictor_5_face_landmarks.dat'))
+    sp = dlib.shape_predictor(resource_path(os.path.join('dlib_models', 'shape_predictor_5_face_landmarks.dat')))
     img = np.array(image)
     old_height, old_width, _ = img.shape
     if old_width > old_height:

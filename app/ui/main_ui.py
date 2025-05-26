@@ -1,12 +1,9 @@
 import tkinter as tk
 from tkinter import simpledialog
 from tkinter.ttk import Progressbar
-from tkinter import filedialog
 from tkinter import Scale
-from tkinter import ttk, messagebox
+from tkinter import messagebox
 import os
-import io
-import sys
 import json
 import csv
 import requests
@@ -14,10 +11,8 @@ from automation import makePredictions as MP
 from model import machineLearning as ML
 from utils import utilities as UM
 import threading
-from tkinter.scrolledtext import ScrolledText
 from PIL import Image, ImageTk
 import pandas as pd
-from pathlib import Path
 from ui.reviewPanel import ReviewPanel
 
 BASE_URL = 'https://bumblebot-460521.uc.r.appspot.com/'
@@ -413,7 +408,7 @@ class MainUI(tk.Toplevel):
         self.settings["MODELPATH"] = full_path[len(self.settings["BASE_DIR"])+1:]
         self.settings["DATA_INDEX"] = os.path.splitext(self.settings["MODELPATH"])[0] + ".csv"
         self.settings["PROFILEPATH"] = os.path.dirname(full_path)[len(self.settings["BASE_DIR"])+1:]
-        with open(os.path.join(self.settings["BASE_DIR"], "utils", "settings.json"), "w") as f:
+        with open(os.path.join(self.settings["BASE_DIR"], "configs", "settings.json"), "w") as f:
             json.dump(self.settings, f, indent=4)
 
         self.update_right_panel(full_path)

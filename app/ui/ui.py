@@ -1,5 +1,4 @@
 import tkinter as tk
-from tkinter import ttk, messagebox
 from ui.main_ui import MainUI
 from ui.auth_ui import AuthUI
 

@@ -1,7 +1,4 @@
 import tkinter as tk
-from tkinter import simpledialog
-from tkinter.ttk import Progressbar
-from tkinter import filedialog
 from tkinter import Scale
 from utils import utilities as UM
 import os

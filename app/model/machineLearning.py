@@ -1,9 +1,7 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import torch.optim as optim
 import os
-import numpy as np
 import pandas as pd
 import re
 from model import fairfaceWrapper as FF
@@ -15,7 +13,6 @@ from PIL import Image, ImageTk
 from torchvision.models import efficientnet_b0, EfficientNet_B0_Weights
 from torchvision import transforms
 import ast  # For safely evaluating the string representation of the list
-import dlib
 from utils import utilities as UM
 import csv
 

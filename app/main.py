@@ -8,7 +8,7 @@ import json
 
 BASE_DIR = Path(__file__).resolve().parent
 WEIGHT_FOLDER = (BASE_DIR / "weights").resolve()
-SETTINGS_PATH = (BASE_DIR / "utils" / "settings.json").resolve()
+SETTINGS_PATH = (BASE_DIR / "configs" / "settings.json").resolve()
 def main():
     if not os.path.exists(WEIGHT_FOLDER):
         os.makedirs(WEIGHT_FOLDER)
@@ -20,5 +20,16 @@ def main():
     app = Application()
     app.mainloop()
 
-if __name__ == "__main__":
-    main()
+try:
+    if __name__ == "__main__":
+        print("Trying")
+        main()
+    else:
+        print("Name not right")
+except Exception as e:
+    print("\n--- UNHANDLED EXCEPTION ---")
+    print(f"Error type: {type(e).__name__}")
+    print(f"Error message: {e}")
+finally:
+    print("\nPress Enter to close this console window...")
+    input()

@@ -1,23 +1,32 @@
+import sys
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import torch.optim as optim
 import os
-import numpy as np
 import pandas as pd
 from tqdm import tqdm
-from torch.utils.data import Dataset, random_split, DataLoader
+from torch.utils.data import random_split, DataLoader
 from torchvision.datasets import ImageFolder
 from PIL import Image
 from torchvision.models import efficientnet_b0, EfficientNet_B0_Weights
 from torchvision import transforms
-import dlib
 import csv
-from pathlib import Path
 
 model = None
 device = None
-BASE_DIR = Path(__file__).resolve().parent
+
+def resource_path(relative_path):
+    """ Get absolute path to resource, works for dev and for PyInstaller """
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        # If not running as a bundled executable (e.g., during development)
+        # Assume relative_path is relative to the script's directory (app/)
+        base_path = os.path.abspath(os.path.dirname(__file__))
+
+    return os.path.join(base_path, relative_path)
+
 class RemappedImageFolder(ImageFolder):
     def __init__(self, root, transform=None):
         super().__init__(root, transform=transform)
@@ -194,7 +203,7 @@ def init_models():
     global model, device
     model = BodyTypeClassifier() 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    loaded_state_dict = torch.load(Path(BASE_DIR / "obesetrain" / "obese_model_multiclass.h5").resolve(), map_location=device)
+    loaded_state_dict = torch.load(resource_path(os.path.join("obesetrain", "obese_model_multiclass.h5")).resolve(), map_location=device)
     model.load_state_dict(loaded_state_dict)
     model.to(device)
     model.eval()

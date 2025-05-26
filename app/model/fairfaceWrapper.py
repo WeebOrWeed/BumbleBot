@@ -1,6 +1,5 @@
 from .fairface import fairface as PD
 import sys
-import os
 from pathlib import Path
 
 # adding FairFace to the system path

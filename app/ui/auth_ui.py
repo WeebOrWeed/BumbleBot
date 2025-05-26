@@ -6,6 +6,7 @@ import threading
 import time # For simulating checks
 import requests
 from utils import utilities as UM
+from pathlib import Path
 
 # Google OAuth imports (from previous example)
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -18,7 +19,7 @@ CLIENT_SECRETS_FILE = os.path.join('configs','client_secret.json')
 GOOGLE_SCOPES = ['https://www.googleapis.com/auth/userinfo.profile',
                  'https://www.googleapis.com/auth/userinfo.email', 'openid']
 BASE_URL = 'https://bumblebot-460521.uc.r.appspot.com/'
-
+TOKEN_PATH = Path(__file__).parent.parent / "configs" / "token.json"
 class AuthUI(tk.Toplevel):
     def __init__(self, parent, onDestroy):
         super().__init__(parent)
@@ -44,10 +45,9 @@ class AuthUI(tk.Toplevel):
     # --- Google OAuth Functions ---
     def get_google_credentials(self):
         credentials = None
-        token_file = 'token.json'
 
-        if os.path.exists(token_file):
-            credentials = Credentials.from_authorized_user_file(token_file, GOOGLE_SCOPES)
+        if os.path.exists(TOKEN_PATH):
+            credentials = Credentials.from_authorized_user_file(TOKEN_PATH, GOOGLE_SCOPES)
 
         if not credentials or not credentials.valid:
             if credentials and credentials.expired and credentials.refresh_token:
@@ -64,7 +64,7 @@ class AuthUI(tk.Toplevel):
                     messagebox.showerror("Authentication Error", f"Failed to authenticate with Google: {e}")
                     return None
 
-            with open(token_file, 'w') as token:
+            with open(TOKEN_PATH, 'w') as token:
                 token.write(credentials.to_json())
                 # print(f"Google token saved to {token_file}")
 
@@ -306,8 +306,8 @@ class AuthUI(tk.Toplevel):
 
     def logout(self):
         # Invalidate local Google token if it exists
-        if os.path.exists('token.json'):
-            os.remove('token.json')
+        if os.path.exists(TOKEN_PATH):
+            os.remove(TOKEN_PATH)
         
         # Clear user data for current session
         self.credentials = None
