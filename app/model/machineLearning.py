@@ -35,8 +35,8 @@ def construct_dataset(data_index_path, user_verdicts_path, data_path, img_size, 
         test_size = len(full_dataset) - train_size
         train_dataset, test_dataset = random_split(full_dataset, [train_size, test_size])
 
-        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
-        test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=4)
+        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=0)
+        test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=0)
 
         return train_loader, test_loader
 

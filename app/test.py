@@ -4,6 +4,7 @@ import time
 import traceback
 import os
 import tkinter as tk # Only this Tkinter import
+from ui.ui import Application
 
 try:
     print("Hello from test_app.py!")

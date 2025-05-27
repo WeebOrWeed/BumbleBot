@@ -1,3 +1,4 @@
+from pathlib import Path
 import sys
 import torch
 import torch.nn as nn
@@ -23,7 +24,7 @@ def resource_path(relative_path):
     except Exception:
         # If not running as a bundled executable (e.g., during development)
         # Assume relative_path is relative to the script's directory (app/)
-        base_path = os.path.abspath(os.path.dirname(__file__))
+        base_path = base_path = Path(__file__).resolve().parent.parent
 
     return os.path.join(base_path, relative_path)
 
@@ -156,75 +157,75 @@ def predict_obesity_class(image):
         print(f"Error processing image: {e}")
         return [0.0, 0.0, 0.0]  # fallback in case of error
 
-def convert_old_csv(csv_file, new_csv_file):
-    global model, device
-    image_root = "C:/Users/Redux/autolike/BumbleBot/DATA/e4fa3127d2b1b7137b65ed697015d407"
-    model = BodyTypeClassifier() 
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    loaded_state_dict = torch.load("C:/Users/Redux/autolike/BumbleBot/obese_model_multiclass.h5", map_location=device)
-    model.load_state_dict(loaded_state_dict)
-    model.to(device)
-    model.eval()
-    df = pd.read_csv(csv_file)
-    if not os.path.exists(new_csv_file):
-        csvsessdata = open(new_csv_file, "w")
-        csvsessdata.write("profile,image,outcome,race_scores,obese_scores\n")
-        csvsessdata.close()
-    with open(new_csv_file, "a+", newline="") as csvsessdata:
-        csvsessdata.seek(0)
-        existing_profiles = set()
-        reader = csv.reader(csvsessdata)
-        for row in reader:
-            if row:
-                existing_profiles.add(row[0])  # assumes profile is the first column
+# def convert_old_csv(csv_file, new_csv_file):
+#     global model, device
+#     image_root = "C:/Users/Redux/autolike/BumbleBot/DATA/e4fa3127d2b1b7137b65ed697015d407"
+#     model = BodyTypeClassifier() 
+#     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+#     loaded_state_dict = torch.load("C:/Users/Redux/autolike/BumbleBot/obese_model_multiclass.h5", map_location=device)
+#     model.load_state_dict(loaded_state_dict)
+#     model.to(device)
+#     model.eval()
+#     df = pd.read_csv(csv_file)
+#     if not os.path.exists(new_csv_file):
+#         csvsessdata = open(new_csv_file, "w")
+#         csvsessdata.write("profile,image,outcome,race_scores,obese_scores\n")
+#         csvsessdata.close()
+#     with open(new_csv_file, "a+", newline="") as csvsessdata:
+#         csvsessdata.seek(0)
+#         existing_profiles = set()
+#         reader = csv.reader(csvsessdata)
+#         for row in reader:
+#             if row:
+#                 existing_profiles.add(row[0])  # assumes profile is the first column
 
-        writer = csv.writer(csvsessdata)
+#         writer = csv.writer(csvsessdata)
 
-        for index, row in df.iterrows():
-            profile = row["profile"]
-            image_id = row["image"]
-            outcome = row["outcome"]
-            race_scores = row["race_scores"]
+#         for index, row in df.iterrows():
+#             profile = row["profile"]
+#             image_id = row["image"]
+#             outcome = row["outcome"]
+#             race_scores = row["race_scores"]
 
-            img_path = image_root + "/" + profile + "/" + image_id
+#             img_path = image_root + "/" + profile + "/" + image_id
 
-            csvsessdata.flush()
-            if not os.path.isfile(img_path):
-                print(f"Error: {img_path} not exist")
-                continue
+#             csvsessdata.flush()
+#             if not os.path.isfile(img_path):
+#                 print(f"Error: {img_path} not exist")
+#                 continue
 
-            # try:
-            image = Image.open(img_path).convert("RGB")
-            obese_score = predict_obesity_class(image)
-            writer.writerow([profile, image_id, outcome, race_scores, obese_score])  # add other fields if needed
-            csvsessdata.flush()
+#             # try:
+#             image = Image.open(img_path).convert("RGB")
+#             obese_score = predict_obesity_class(image)
+#             writer.writerow([profile, image_id, outcome, race_scores, obese_score])  # add other fields if needed
+#             csvsessdata.flush()
 
 def init_models():
     global model, device
     model = BodyTypeClassifier() 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    loaded_state_dict = torch.load(resource_path(os.path.join("obesetrain", "obese_model_multiclass.h5")).resolve(), map_location=device)
+    loaded_state_dict = torch.load(resource_path(os.path.join("model", "obesetrain", "obese_model_multiclass.h5")), map_location=device)
     model.load_state_dict(loaded_state_dict)
     model.to(device)
     model.eval()
 
-if __name__ == "__main__":
-    convert_old_csv("C:/Users/Redux/autolike/BumbleBot/DATA/e4fa3127d2b1b7137b65ed697015d407/e4fa3127d2b1b7137b65ed697015d407_2.csv", "C:/Users/Redux/autolike/BumbleBot/DATA/e4fa3127d2b1b7137b65ed697015d407/e4fa3127d2b1b7137b65ed697015d407_3.csv")
-    # train_loader, test_loader = construct_obese_dataset()
-    # train_model(train_loader=train_loader, epoch_num=250)
-    # torch.save(model.state_dict(), "C:/Users/Redux/autolike/BumbleBot/obese_model_multiclass.h5")
-    # print("Model saved to C:/Users/Redux/autolike/BumbleBot/obese_model_multiclass.h5")
-    # # # model = BodyTypeClassifier() 
-    # # # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    # # # loaded_state_dict = torch.load("C:/Users/Redux/autolike/BumbleBot/obese_model_multiclass.h5", map_location=device)
-    # # # model.load_state_dict(loaded_state_dict)
-    # # # model.to(device)
-    # # # model.eval()
-    # # init_models()
+# if __name__ == "__main__":
+#     # convert_old_csv("C:/Users/Redux/autolike/BumbleBot/DATA/e4fa3127d2b1b7137b65ed697015d407/e4fa3127d2b1b7137b65ed697015d407_2.csv", "C:/Users/Redux/autolike/BumbleBot/DATA/e4fa3127d2b1b7137b65ed697015d407/e4fa3127d2b1b7137b65ed697015d407_3.csv")
+#     # train_loader, test_loader = construct_obese_dataset()
+#     # train_model(train_loader=train_loader, epoch_num=250)
+#     # torch.save(model.state_dict(), "C:/Users/Redux/autolike/BumbleBot/obese_model_multiclass.h5")
+#     # print("Model saved to C:/Users/Redux/autolike/BumbleBot/obese_model_multiclass.h5")
+#     # # # model = BodyTypeClassifier() 
+#     # # # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+#     # # # loaded_state_dict = torch.load("C:/Users/Redux/autolike/BumbleBot/obese_model_multiclass.h5", map_location=device)
+#     # # # model.load_state_dict(loaded_state_dict)
+#     # # # model.to(device)
+#     # # # model.eval()
+#     # # init_models()
 
-    # score1 = predict_obesity_class(Image.open("C:/Users/Redux/autolike/BumbleBot/DATA/e4fa3127d2b1b7137b65ed697015d407/d5aa01cf-459a-4c39-a77c-c0c31c8fe537/image_0.png").convert("RGB")) # 1
-    # score2 = predict_obesity_class(Image.open("C:/Users/Redux/autolike/BumbleBot/DATA/e4fa3127d2b1b7137b65ed697015d407/d8686402-f8ed-40c9-bb44-9f8517ea7e28/image_1.png").convert("RGB")) # -1
-    # score3 = predict_obesity_class(Image.open("C:/Users/Redux/autolike/BumbleBot/DATA/e4fa3127d2b1b7137b65ed697015d407/a5acd1d1-3f3f-4dd9-9104-825410f48c80/image_4.png").convert("RGB")) # 1
-    # score4 = predict_obesity_class(Image.open("C:/Users/Redux/autolike/BumbleBot/DATA/e4fa3127d2b1b7137b65ed697015d407/0f840689-c827-4d29-8225-bf44e6398c9c/image_4.png").convert("RGB")) # -1
-    # score5 = predict_obesity_class(Image.open("C:/Users/Redux/autolike/BumbleBot/DATA/e4fa3127d2b1b7137b65ed697015d407/80d7345f-f184-44e5-a4a7-7406b3a2137c/image_0.png").convert("RGB")) # 1
-    # print(f"{score1} \n {score2} \n {score3} \n {score4} \n {score5}")
+#     # score1 = predict_obesity_class(Image.open("C:/Users/Redux/autolike/BumbleBot/DATA/e4fa3127d2b1b7137b65ed697015d407/d5aa01cf-459a-4c39-a77c-c0c31c8fe537/image_0.png").convert("RGB")) # 1
+#     # score2 = predict_obesity_class(Image.open("C:/Users/Redux/autolike/BumbleBot/DATA/e4fa3127d2b1b7137b65ed697015d407/d8686402-f8ed-40c9-bb44-9f8517ea7e28/image_1.png").convert("RGB")) # -1
+#     # score3 = predict_obesity_class(Image.open("C:/Users/Redux/autolike/BumbleBot/DATA/e4fa3127d2b1b7137b65ed697015d407/a5acd1d1-3f3f-4dd9-9104-825410f48c80/image_4.png").convert("RGB")) # 1
+#     # score4 = predict_obesity_class(Image.open("C:/Users/Redux/autolike/BumbleBot/DATA/e4fa3127d2b1b7137b65ed697015d407/0f840689-c827-4d29-8225-bf44e6398c9c/image_4.png").convert("RGB")) # -1
+#     # score5 = predict_obesity_class(Image.open("C:/Users/Redux/autolike/BumbleBot/DATA/e4fa3127d2b1b7137b65ed697015d407/80d7345f-f184-44e5-a4a7-7406b3a2137c/image_0.png").convert("RGB")) # 1
+#     # print(f"{score1} \n {score2} \n {score3} \n {score4} \n {score5}")

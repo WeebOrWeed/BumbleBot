@@ -1,4 +1,5 @@
 from __future__ import print_function, division
+from pathlib import Path
 import warnings
 warnings.filterwarnings("ignore")
 import os.path
@@ -30,17 +31,17 @@ def resource_path(relative_path):
     except Exception:
         # If not running as a bundled executable (e.g., during development)
         # Assume relative_path is relative to the script's directory (app/)
-        base_path = os.path.abspath(os.path.dirname(__file__))
+        base_path = Path(__file__).resolve().parent.parent.parent
 
     return os.path.join(base_path, relative_path)
-model_path_multi_7 = resource_path(os.path.join('fair_face_models', 'res34_fair_align_multi_7_20190809.pt'))
-model_path_multi_4 = resource_path(os.path.join('fair_face_models', 'res34_fair_align_multi_4_20190809.pt'))
+model_path_multi_7 = resource_path(os.path.join('model','fairface','fair_face_models', 'res34_fair_align_multi_7_20190809.pt'))
+model_path_multi_4 = resource_path(os.path.join('model','fairface','fair_face_models', 'res34_fair_align_multi_4_20190809.pt'))
 
 # Returns all the faces in iamge
 def detect_faces_of_image(image, default_max_size=800, size = 300, padding = 0.25):
-    cnn_face_detector = dlib.cnn_face_detection_model_v1(resource_path(os.path.join('dlib_models', 'mmod_human_face_detector.dat'))) # this is too slow
+    cnn_face_detector = dlib.cnn_face_detection_model_v1(resource_path(os.path.join('model','fairface','dlib_models', 'mmod_human_face_detector.dat'))) # this is too slow
     # cnn_face_detector = dlib.get_frontal_face_detector() # faster model but less accurate
-    sp = dlib.shape_predictor(resource_path(os.path.join('dlib_models', 'shape_predictor_5_face_landmarks.dat')))
+    sp = dlib.shape_predictor(resource_path(os.path.join('model','fairface','dlib_models', 'shape_predictor_5_face_landmarks.dat')))
     img = np.array(image)
     old_height, old_width, _ = img.shape
     if old_width > old_height:
@@ -149,50 +150,50 @@ def init_models():
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     ])
 
-def convert_old_csv(csv_file, new_csv_file):
-    image_root = "C:/Users/Redux/autolike/BumbleBot/DATA/e4fa3127d2b1b7137b65ed697015d407"
-    df = pd.read_csv(csv_file)
-    if not os.path.exists(new_csv_file):
-        csvsessdata = open(new_csv_file, "w")
-        csvsessdata.write("profile,image,outcome,race_scores\n")
-        csvsessdata.close()
-    with open(new_csv_file, "a+", newline="") as csvsessdata:
-        csvsessdata.seek(0)
-        existing_profiles = set()
-        reader = csv.reader(csvsessdata)
-        for row in reader:
-            if row:
-                existing_profiles.add(row[0])  # assumes profile is the first column
+# def convert_old_csv(csv_file, new_csv_file):
+#     image_root = "C:/Users/Redux/autolike/BumbleBot/DATA/e4fa3127d2b1b7137b65ed697015d407"
+#     df = pd.read_csv(csv_file)
+#     if not os.path.exists(new_csv_file):
+#         csvsessdata = open(new_csv_file, "w")
+#         csvsessdata.write("profile,image,outcome,race_scores\n")
+#         csvsessdata.close()
+#     with open(new_csv_file, "a+", newline="") as csvsessdata:
+#         csvsessdata.seek(0)
+#         existing_profiles = set()
+#         reader = csv.reader(csvsessdata)
+#         for row in reader:
+#             if row:
+#                 existing_profiles.add(row[0])  # assumes profile is the first column
 
-        writer = csv.writer(csvsessdata)
+#         writer = csv.writer(csvsessdata)
 
-        for index, row in df.iterrows():
-            profile = row["profile"]
-            print(profile)
-            outcome = ast.literal_eval(row["outcome"])
+#         for index, row in df.iterrows():
+#             profile = row["profile"]
+#             print(profile)
+#             outcome = ast.literal_eval(row["outcome"])
 
-            if profile in existing_profiles:
-                continue
-            profile_dir = image_root + "/" + profile
+#             if profile in existing_profiles:
+#                 continue
+#             profile_dir = image_root + "/" + profile
 
-            if not os.path.isdir(profile_dir):
-                # writer.writerow([profile,outcome,np.empty(7)])
-                # csvsessdata.flush()
-                continue
+#             if not os.path.isdir(profile_dir):
+#                 # writer.writerow([profile,outcome,np.empty(7)])
+#                 # csvsessdata.flush()
+#                 continue
 
-            idx = 0
-            for img_file in sorted(os.listdir(profile_dir)):
-                img_path = Path(profile_dir / img_file).resolve()
-                csvsessdata.flush()
-                if not os.path.isfile(img_path):
-                    continue
+#             idx = 0
+#             for img_file in sorted(os.listdir(profile_dir)):
+#                 img_path = Path(profile_dir / img_file).resolve()
+#                 csvsessdata.flush()
+#                 if not os.path.isfile(img_path):
+#                     continue
 
-                image = Image.open(img_path).convert("RGB")
-                face_chips = detect_faces_of_image(image)
-                race_scores = predidct_races_of_image(face_chips)
-                writer.writerow([profile, img_file, outcome[idx], race_scores])  # add other fields if needed
-                idx += 1
-                csvsessdata.flush()
+#                 image = Image.open(img_path).convert("RGB")
+#                 face_chips = detect_faces_of_image(image)
+#                 race_scores = predidct_races_of_image(face_chips)
+#                 writer.writerow([profile, img_file, outcome[idx], race_scores])  # add other fields if needed
+#                 idx += 1
+#                 csvsessdata.flush()
 
 def predict(image):
     face_chips = detect_faces_of_image(image)
