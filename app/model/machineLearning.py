@@ -175,7 +175,7 @@ def train_classifier_with_metadata(train_loader, num_epochs, image_size, model_p
         if cancel_flag and cancel_flag():
             return model
         torch.save(model.state_dict(), model_path)
-        print(f"Model saved to {model_path}")
+        # print(f"Model saved to {model_path}")
         
     if cancel_flag and cancel_flag():
         return model
