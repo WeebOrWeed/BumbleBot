@@ -109,7 +109,7 @@ def wait_for_login_callback(driver, loaded_model):
             # Remove the no longer recorded profiles
             for i in range(num_profiles - max_profile_number):
                 user_name = os.path.splitext(os.path.basename(settings["MODELPATH"]))[0]
-                folder_path = os.path.join("Weights",user_name,"PREDICTION",existing_rows[i][0]) # assumes profile is the first column
+                folder_path = os.path.join(settings['BASE_DIR'],"weights",user_name,"PREDICTION",existing_rows[i][0]) # assumes profile is the first column
                 if os.path.exists(folder_path):
                     try:
                         shutil.rmtree(folder_path)
@@ -124,7 +124,7 @@ def wait_for_login_callback(driver, loaded_model):
         print("Now logged in")
         # now make the log file for this session
         user_name = os.path.splitext(os.path.basename(settings["MODELPATH"]))[0]
-        folder_path = os.path.join("Weights",user_name)
+        folder_path = os.path.join(settings["BASE_DIR"],"weights",user_name)
         os.makedirs(folder_path, exist_ok=True)
         # Make a Predicions folder if necessary, this folder contains all photos downloaded
         datafp = os.path.join(folder_path, "PREDICTION")
@@ -145,12 +145,12 @@ def wait_for_login_callback(driver, loaded_model):
                 counter = counter - 1
                 # wait for about 5 seconds
                 value = np.random.normal(loc=3, scale=0.3)
-                print(f"Sleep for {value} seconds")
+                # print(f"Sleep for {value} seconds")
                 time.sleep(value)
                 # then save all the pictures in the right directory
                 profile = BM.find_download_all_pictures(driver, datafp)
                 if profile == 'invalid':
-                    print("no photos detected, proceed to the next")
+                    # print("no photos detected, proceed to the next")
                     continue
                 # make a prediction on this profile
                 profile_dataloader = ML.load_images_for_prediction_dataloader(datafp, int(settings["IMG_SIZE"]), profile)
@@ -180,6 +180,7 @@ def wait_for_login_callback(driver, loaded_model):
                 else:
                     BM.dislike_profile(driver)
                 time.sleep(2)
+        stop_everything() # Shut down the swiping page after limited amount of swipes, this is to prevent Bumble alerts to AI Agents
 
     def on_close():
         nonlocal root_alive

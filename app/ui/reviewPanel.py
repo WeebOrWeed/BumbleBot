@@ -82,16 +82,16 @@ class ReviewPanel(tk.Toplevel):
             training_path = os.path.join(self.settings["BASE_DIR"], self.settings["PROFILEPATH"], "TRAINING")
             os.makedirs(training_path, exist_ok=True)
             verdict_path = os.path.join(self.settings["BASE_DIR"], self.settings["PROFILEPATH"], "user_verdicts.csv")
-            if not os.path.exists(verdict_path):
-                with open(verdict_path, "w", newline="") as file:
-                    writer = csv.writer(file)
-                    writer.writerow(["image","outcome","race_scores","obese_scores"])
-                    file.flush()
-            
-            # The profile name becomes the name of the image in training set
-            img_name = img.profile + ".png"
-            with open(verdict_path, "a", newline="") as file:
+            file_exists = os.path.exists(verdict_path)
+            # Open the file for writing ('w') if it doesn't exist (to write header)
+            # or for appending ('a') if it already exists (to add data)
+            with open(verdict_path, "a" if file_exists else "w", newline="") as file:
                 writer = csv.writer(file)
+                if not file_exists:
+                # If the file didn't exist, write the header row first
+                    writer.writerow(["image","outcome","race_scores","obese_scores"])
+                img_name = img.profile + ".png"
+                # Now, write the data row regardless of whether the header was just written or not
                 writer.writerow([img_name, self.attr_slider.get(), img.race_score, img.obesity_score])
                 
             # Move copy the image over to training set with new path

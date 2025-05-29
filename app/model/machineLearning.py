@@ -236,7 +236,7 @@ def init_models():
 
 def load_images_for_prediction_dataloader(data_path, img_size, profile, batch_size=1):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    picture_dir = os.path.join(os.getcwd(), data_path, profile)
+    picture_dir = os.path.join(data_path, profile)
     image_paths = [os.path.join(picture_dir, f) for f in sorted(os.listdir(picture_dir)) if os.path.isfile(os.path.join(picture_dir, f))]
 
     transform = transforms.Compose([
