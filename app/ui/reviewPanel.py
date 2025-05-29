@@ -7,30 +7,6 @@ from pathlib import Path
 import csv
 from PIL import Image, ImageTk
 import shutil
-import sys
-
-def get_executable_dir_path(relative_path=""):
-    """
-    Get the absolute path to a file or folder located relative to the executable.
-    Works for both development and compiled PyInstaller executables.
-    """
-    if getattr(sys, 'frozen', False):
-        # We are running in a bundle (PyInstaller)
-        # sys.executable is the path to the .exe itself (e.g., D:\BumbleBot\app\dist\BumbleBot.exe)
-        executable_dir = Path(sys.executable).parent # This gives you D:\BumbleBot\app\dist\
-    else:
-        # We are running in a normal Python environment (development)
-        # __file__ is the path to the script (e.g., C:\YourProject\main.py)
-        executable_dir = Path(__file__).resolve().parent.parent # This gives you C:\YourProject\
-        # You might need to adjust this for development if your 'configs', 'images', 'weights'
-        # folders are relative to a different part of your project structure than main.py
-        # For example, if main.py is in 'app/', and these folders are in the project root:
-        # executable_dir = Path(__file__).resolve().parents[1] # Go up two levels from main.py
-
-    return (executable_dir / relative_path).resolve()
-
-# BASE_DIR now refers to the directory containing the executable
-BASE_DIR_EXE = get_executable_dir_path()
 
 class ReviewPanel(tk.Toplevel):
     class ImageInfo:
@@ -60,6 +36,8 @@ class ReviewPanel(tk.Toplevel):
         
         self.title("Review Past")
         self.geometry("800x600")
+        self.iconbitmap(UM.resource_path("BumbleBotLogo.ico"))
+        self.focus_set()
         self.grab_set()
         tk.Label(self, text="Review your predictions", font=("Arial", 20)).pack(pady=10)
         # Main frame for everything
@@ -87,7 +65,7 @@ class ReviewPanel(tk.Toplevel):
         self.update_buttons()
         
         if self.image_index == len(self.images):
-            self.load_image_to_label(os.path.join(BASE_DIR_EXE, "images", "ui", "NoReviews.png"))
+            self.load_image_to_label(os.path.join(self.settings["BASE_DIR"], "images", "ui", "NoReviews.png"))
             self.next_button.destroy()
             self.attr_slider.destroy()
         else:
@@ -131,7 +109,7 @@ class ReviewPanel(tk.Toplevel):
                 
         self.image_index += 1
         if self.image_index == len(self.images):
-            self.load_image_to_label(os.path.join(BASE_DIR, "images", "ui", "ReviewComplete.png"))
+            self.load_image_to_label(os.path.join(self.settings["BASE_DIR"], "images", "ui", "ReviewComplete.png"))
             self.next_button.destroy()
             self.attr_slider.destroy()
             # self.button = tk.Button(self, text="Train", font=("Arial", 12), command=self.go_to_train)
@@ -154,9 +132,9 @@ class ReviewPanel(tk.Toplevel):
         try:
             image_path = ""
             if liked:
-                image_path = os.path.join(BASE_DIR_EXE, "images", "ui", "Liked.png")
+                image_path = os.path.join(self.settings["BASE_DIR"], "images", "ui", "Liked.png")
             else:
-                image_path = os.path.join(BASE_DIR_EXE, "images", "ui", "Nope.png")
+                image_path = os.path.join(self.settings["BASE_DIR"], "images", "ui", "Nope.png")
             image = Image.open(image_path).convert("RGBA")
             bg = Image.new("RGBA", image.size, (0, 0, 0, 0))
             image = Image.alpha_composite(bg, image)

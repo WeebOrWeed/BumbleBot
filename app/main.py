@@ -53,5 +53,4 @@ except Exception as e:
     print(f"Error type: {type(e).__name__}")
     print(f"Error message: {e}")
 finally:
-    print("\nPress Enter to close this console window...")
-    input()
+    print("BumbleBot exited.")

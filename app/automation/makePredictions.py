@@ -210,8 +210,10 @@ def wait_for_login_callback(driver, loaded_model):
 
     root = tk.Tk()
     root.title("Login Required")
+    root.iconbitmap(UM.resource_path("BumbleBotLogo.ico"))
     root.geometry("300x120")
     root.attributes("-topmost", True)
+    root.focus_set()
     root.protocol("WM_DELETE_WINDOW", on_close)
 
     label = tk.Label(root, text="Log in to Bumble,\nthen click to continue.", font=("Arial", 11))

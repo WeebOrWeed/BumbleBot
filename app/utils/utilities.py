@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 import sys
+import os
 
 def get_executable_dir_path(relative_path=""):
     """
@@ -21,6 +22,18 @@ def get_executable_dir_path(relative_path=""):
         # executable_dir = Path(__file__).resolve().parents[1] # Go up two levels from main.py
 
     return (executable_dir / relative_path).resolve()
+
+def resource_path(relative_path):
+    """ Get absolute path to resource, works for dev and for PyInstaller """
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        # If not running as a bundled executable (e.g., during development)
+        # Assume relative_path is relative to the script's directory (app/)
+        base_path = Path(__file__).resolve().parent.parent
+
+    return os.path.join(base_path, relative_path)
 
 # BASE_DIR now refers to the directory containing the executable
 BASE_DIR_EXE = get_executable_dir_path()

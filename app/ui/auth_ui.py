@@ -47,16 +47,18 @@ TOKEN_PATH = BASE_DIR_EXE / "configs" / "token.json"
 class AuthUI(tk.Toplevel):
     def __init__(self, parent, onDestroy):
         super().__init__(parent)
-        self.title("Tkinter Google OAuth + Stripe App")
+        self.settings = UM.load_settings()
+        self.title("BumbleBot Login")
         self.geometry("800x600")
-
+        self.iconbitmap(UM.resource_path("BumbleBotLogo.ico"))
+        self.focus_set()
+        
         self.credentials = None
         self.user_profile = None
         self.current_google_user_id = None # Store the current logged-in Google ID
         self.polling_thread = None
         self.polling_active = False
         self.open_bumble_bot = False
-        self.settings = UM.load_settings()
         self.check_login_status()
         # Bind to the <Destroy> event
         # This handler will be called *just before* the widget is fully destroyed

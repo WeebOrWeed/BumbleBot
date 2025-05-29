@@ -5,7 +5,7 @@ a = Analysis(
     ['main.py'],
     pathex=[],
     binaries=[],
-    datas=[('./model', './model')],
+    datas=[('./model/fairface/dlib_models', './model/fairface/dlib_models'), ('./model/fairface/fair_face_models', './model/fairface/fair_face_models'), ('./model/obesetrain/obese_model_multiclass.h5', './model/obesetrain/obese_model_multiclass.h5'), ('./BumbleBotLogo.ico', '.')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
