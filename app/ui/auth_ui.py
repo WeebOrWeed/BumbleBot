@@ -19,7 +19,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 CLIENT_SECRETS_FILE = os.path.join('configs','client_secret.json')
 GOOGLE_SCOPES = ['https://www.googleapis.com/auth/userinfo.profile',
                  'https://www.googleapis.com/auth/userinfo.email', 'openid']
-BASE_URL = 'https://bumblebot-460521.uc.r.appspot.com/'
+BASE_URL = 'https://bumblebot-460521.uc.r.appspot.com'
 
 def get_executable_dir_path(relative_path=""):
     """
@@ -52,7 +52,7 @@ class AuthUI(tk.Toplevel):
         self.geometry("800x600")
         self.iconbitmap(UM.resource_path("BumbleBotLogo.ico"))
         self.focus_set()
-        
+
         self.credentials = None
         self.user_profile = None
         self.current_google_user_id = None # Store the current logged-in Google ID

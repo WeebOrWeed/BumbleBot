@@ -11,7 +11,7 @@ from utils import utilities as UM
 from ui.reviewPanel import ReviewPanel
 import shutil
 
-BASE_URL = 'https://bumblebot-460521.uc.r.appspot.com/'
+BASE_URL = 'https://bumblebot-460521.uc.r.appspot.com'
 
 class MainUI(tk.Toplevel):
     def __init__(self, parent, onDestroy, userProfile):
@@ -20,7 +20,7 @@ class MainUI(tk.Toplevel):
         self.geometry("1920x1080")
         self.iconbitmap(UM.resource_path("BumbleBotLogo.ico"))
         self.focus_set()
-        
+
         self.selected_button = None
         self.selected_profile_path = None
         self.image_index = 0
