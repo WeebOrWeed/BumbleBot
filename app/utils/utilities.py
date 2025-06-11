@@ -43,3 +43,27 @@ def load_settings():
     setf = open(settings_path, "r")
     settings = json.load(setf)
     return settings
+
+def center_window(window, parent=None, width=None, height=None):
+    """
+    Center a Toplevel window over its parent (or screen if parent is None).
+    Optionally specify width/height if not yet set.
+    """
+    window.update_idletasks()
+    if parent is not None:
+        parent.update_idletasks()
+        px = parent.winfo_rootx() + (parent.winfo_width() // 2)
+        py = parent.winfo_rooty() + (parent.winfo_height() // 2)
+    else:
+        screen_width = window.winfo_screenwidth()
+        screen_height = window.winfo_screenheight()
+        px = screen_width // 2
+        py = screen_height // 2
+    if width is None or height is None:
+        w = window.winfo_width() or window.winfo_reqwidth()
+        h = window.winfo_height() or window.winfo_reqheight()
+    else:
+        w, h = width, height
+    x = px - (w // 2)
+    y = py - (h // 2)
+    window.geometry(f"{w}x{h}+{x}+{y}")

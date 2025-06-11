@@ -6,6 +6,7 @@ from pathlib import Path
 from utils import utilities as UM
 import json
 import sys
+from cefpython3 import cefpython as cef
 
 def get_executable_dir_path(relative_path=""):
     """
@@ -44,6 +45,7 @@ def main():
         json.dump(settings, f, indent=4)
     app = Application()
     app.mainloop()
+    cef.Shutdown()
 
 try:
     if __name__ == "__main__":

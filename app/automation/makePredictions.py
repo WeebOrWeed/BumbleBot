@@ -4,7 +4,6 @@ from utils import utilities as UM
 import numpy as np
 from model.machineLearning import InterestRegressorWithMetadata  # Import the regression model
 from model.obeseTrainer import BodyTypeClassifier
-from selenium import webdriver
 import torch
 import os
 import time
@@ -15,78 +14,58 @@ import traceback
 import csv
 import shutil
 import random
+from ui.swipe_controller import SwipeController
 
 root = None
 settings = None
 
-def make_predictions():
-    global root, settings
-    try:
-        # load up all the settings
-        settings = UM.load_settings()
-        # first go to bumble.com
-        driver = webdriver.Chrome()
-        # also load up the model cause why do that later
-        loaded_model = InterestRegressorWithMetadata(int(settings["IMG_SIZE"]))  # Load the regression model
-        ML.init_models()
-        # try loading up the weights
-        try:
-            load_path = os.path.normpath(settings["MODELPATH"])
-            device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-            loaded_state_dict = torch.load(load_path, map_location=device)
-            loaded_model.load_state_dict(loaded_state_dict)
-            loaded_model.to(device)
-            loaded_model.eval()
-        except Exception as e:
-            print("Couldn't load existing model")
-            print("Exiting ... please train a model first")
-            exit()
-        # then navigate to bumble
-        driver.get("https://bumble.com/app")
-        # do nothing await user input
-        # login = input("Type in yes when you have logged in (Then ofc press enter): ")
-        wait_for_login_callback(driver, loaded_model)
-    except Exception as e:
-        print("Sorry something went wrong")
-        # Get the traceback information
-        tb = sys.exc_info()[2]
-        # Extract the line number from the traceback
-        lineno = tb.tb_lineno
-        # Print the exception and the line number
-        print(f"An error occurred on line {lineno}: {e}")
+def make_predictions(browser, set_status=None, show_continue=None, show_stop=None, set_continue_callback=None, set_stop_callback=None):
+    """Start the swiping process with the given UI callbacks and CEF browser"""
+    controller = SwipeController(
+        browser=browser,
+        set_status=set_status,
+        show_continue=show_continue,
+        show_stop=show_stop,
+        set_continue_callback=set_continue_callback,
+        set_stop_callback=set_stop_callback
+    )
+    controller.start()
 
-def wait_for_login_callback(driver, loaded_model):
-    import tkinter as tk
+def wait_for_login_callback(driver, loaded_model, set_status=None, show_continue=None, show_stop=None, set_continue_callback=None, set_stop_callback=None):
     import threading
     import time
-    global root, settings
+    global settings
 
+    login_confirmed = [False]
     root_alive = True
-    login_confirmed = [False]  # Use mutable container to allow setting from inner scope
-    label = None
-    continue_button = None
-    stop_button = None
+    # UI callbacks
+    if set_status is None:
+        set_status = lambda text: print(text)
+    if show_continue is None:
+        show_continue = lambda: None
+    if show_stop is None:
+        show_stop = lambda: None
+    # These will be settable by the UI
+    continue_callback = [None]
+    stop_callback = [None]
+
     def stop_everything():
         try:
             if driver:
                 driver.quit()
         except:
             pass
-        try:
-            root.after(1, root.destroy)
-        except:
-            pass
+        root_alive = False
+        if stop_callback[0]:
+            stop_callback[0]()
 
     def on_continue():
         nonlocal root_alive
         root_alive = False
         login_confirmed[0] = True
-        if label:
-            label.config(text="Logged in, swiping...")
-        if continue_button:
-            continue_button.pack_forget()
-        if stop_button:
-            stop_button.pack()
+        set_status("Logged in, swiping...")
+        show_stop()
+        show_continue()  # Hide continue button if needed
         threading.Thread(target=swipe_on_background, daemon=True).start()
 
     def clear_overflow_profile(prediction_csv_path, max_profile_number = 100):
@@ -119,81 +98,55 @@ def wait_for_login_callback(driver, loaded_model):
                 else:
                     print(f"Folder '{folder_path}' does not exist.")
 
-
     def swipe_on_background():
-        print("Now logged in")
-        # now make the log file for this session
+        set_status("Now logged in. Starting auto swipe...")
         user_name = os.path.splitext(os.path.basename(settings["MODELPATH"]))[0]
         folder_path = os.path.join(settings["BASE_DIR"],"weights",user_name)
         os.makedirs(folder_path, exist_ok=True)
-        # Make a Predicions folder if necessary, this folder contains all photos downloaded
         datafp = os.path.join(folder_path, "PREDICTION")
         os.makedirs(datafp, exist_ok=True)
-        # Create profile prediction csv if not available
         prediction_csv_path = os.path.join(folder_path, f"predictions.csv")
         if not os.path.exists(prediction_csv_path):
             with open(prediction_csv_path, "w", newline="") as file:
                 writer = csv.writer(file)
                 writer.writerow(["profile","image","race_score","obesity_score","predicted_attractiveness","final_decision"])
         clear_overflow_profile(prediction_csv_path, settings["MAX_PROFILE_STORED"])
+        print("[DEBUG] Starting swiping read csv")
         with open(prediction_csv_path, "a+", newline="") as file:
             writer = csv.writer(file)
-            # this is the end of the first initial setup
             counter = int(settings["TOTALSWIPES"])
+            print("[DEBUG] CSV read")
             while counter > 0:
-                # increment the counter down
                 counter = counter - 1
-                # wait for about 5 seconds
+                print("[DEBUG] Swiping... counter", counter)
                 value = np.random.normal(loc=3, scale=0.3)
-                # print(f"Sleep for {value} seconds")
+                set_status(f"Swiping... {counter} swipes left.")
                 time.sleep(value)
-                # then save all the pictures in the right directory
                 profile = BM.find_download_all_pictures(driver, datafp)
                 if profile == 'invalid':
-                    # print("no photos detected, proceed to the next")
+                    set_status("No photos detected, skipping profile.")
                     continue
-                # make a prediction on this profile
                 profile_dataloader = ML.load_images_for_prediction_dataloader(datafp, int(settings["IMG_SIZE"]), profile)
-                # Make predictions for all images in the DataLoader
                 raw_predictions, race_scores, obesity_scores = ML.predict(loaded_model, profile_dataloader)
-                print("predicted scores " + str(raw_predictions))
-    
-                # Decide based on the continuous predictions
-                # Example: Average score and threshold
                 avg_prediction = np.mean(raw_predictions) if raw_predictions else 0.0
-                decision_threshold = float(settings.get('THRESH', 0.2)) # Example threshold
+                decision_threshold = float(settings.get('THRESH', 0.2))
                 decision = 1 if avg_prediction > decision_threshold or sum(1 for item in raw_predictions if item > 0.9) >= 2 else 0
-                print(f"average prediction score: {avg_prediction:.4f}, final decision: {decision}")
-    
-                # log a random image of profile to csv
+                set_status(f"Profile: {profile}\nAvg score: {avg_prediction:.4f}\nDecision: {'Like' if decision else 'Dislike'}")
                 image_files = sorted(os.listdir(os.path.join(datafp, profile)))
                 if image_files:
                     idx = random.randint(0, len(image_files) - 1)
                     image_file = image_files[idx]
-                    writer.writerow([profile, image_file, race_scores[idx], obesity_scores[idx], raw_predictions[idx], decision])  # add other fields if needed
+                    writer.writerow([profile, image_file, race_scores[idx], obesity_scores[idx], raw_predictions[idx], decision])
                 file.flush()
                 clear_overflow_profile(prediction_csv_path, settings["MAX_PROFILE_STORED"])
-
-                # then actually swipe left or right
                 if (decision == 1):
                     BM.like_profile(driver)
                 else:
                     BM.dislike_profile(driver)
                 time.sleep(2)
-        stop_everything() # Shut down the swiping page after limited amount of swipes, this is to prevent Bumble alerts to AI Agents
-
-    def on_close():
-        nonlocal root_alive
-        root_alive = False
-        try:
-            driver.quit()
-        except:
-            pass
-        try:
-            if root.winfo_exists():
-                root.after(1, root.destroy)
-        except:
-            pass
+        set_status("Auto swipe finished. You can close this page.")
+        show_continue()
+        stop_everything()
 
     def monitor_chrome():
         nonlocal root_alive
@@ -201,37 +154,18 @@ def wait_for_login_callback(driver, loaded_model):
             try:
                 _ = driver.title
             except:
-                try:
-                    if root.winfo_exists():
-                        root.after(1, root.destroy)
-                except:
-                    pass
+                stop_everything()
                 break
             time.sleep(1)
 
-    root = tk.Tk()
-    root.title("Login Required")
-    root.iconbitmap(UM.resource_path("BumbleBotLogo.ico"))
-    root.geometry("300x120")
-    root.attributes("-topmost", True)
-    root.focus_set()
-    root.protocol("WM_DELETE_WINDOW", on_close)
-
-    label = tk.Label(root, text="Log in to Bumble,\nthen click to continue.", font=("Arial", 11))
-    label.pack(pady=10)
-    button_row = tk.Frame(root)
-    button_row.pack(pady=10)
-    continue_button = tk.Button(button_row, text="I'm Logged In", command=on_continue)
-    continue_button.pack(side=tk.LEFT, padx=10)
-    stop_button = tk.Button(button_row, text="Stop", command=stop_everything)
-    stop_button.pack(side=tk.LEFT, padx=10)
-    stop_button.pack_forget()
-
+    # Set up callbacks for UI
+    if set_continue_callback:
+        set_continue_callback(on_continue)
+    if set_stop_callback:
+        set_stop_callback(stop_everything)
+    # Show the continue button
+    show_continue()
+    set_status("Log in to Bumble, then click to continue.")
+    # Optionally, monitor Chrome in a thread
     threading.Thread(target=monitor_chrome, daemon=True).start()
-
-    # Start mainloop safely in main thread
-    root.mainloop()
-
-    # Now you're safe to proceed after the UI closes
-    if not login_confirmed[0]:
-        raise RuntimeError("User closed login popup or Chrome before confirming.")
+    # The UI will call on_continue() when the user clicks continue

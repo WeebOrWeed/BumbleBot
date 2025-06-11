@@ -12,125 +12,137 @@ from model import machineLearning as ML
 def count_pngs(folder_path):
     return len([f for f in os.listdir(folder_path) if f.lower().endswith('.png')])
 
-class TrainPanel(tk.Toplevel):
-    def __init__(self, parent):
-        super().__init__(parent)
+class TrainPanel(tk.Frame):
+    def __init__(self, parent, on_back=None):
+        super().__init__(parent, bg="#a259c6")
         self.settings = UM.load_settings()
         self.cancel_training = False
         self.training_in_progress = False
-        self.title("Trainer")
-        self.geometry("800x700")
-        self.iconbitmap(UM.resource_path("BumbleBotLogo.ico"))
-        self.focus_set()
-        self.grab_set()
-    
-        self.data_index_path = os.path.normpath(os.path.join(self.settings["BASE_DIR"], self.settings["DATA_INDEX"]))
-        self.ground_truth = pd.read_csv(os.path.join(self.settings.get("BASE_DIR", ""),self.settings.get("INIT_DATA_PATH", ""), "init_data.csv"))
+        self.on_back = on_back
 
-        # Create index data if not available
-        if not os.path.exists(self.data_index_path):
-            with open(self.data_index_path, "w") as file:
-                writer = csv.writer(file)
-                writer.writerow(["image","outcome","race_scores","obese_scores"])
+        # Profile-specific paths
+        profile_dir = os.path.join(self.settings["BASE_DIR"], self.settings["PROFILEPATH"])
+        profile_name = os.path.basename(profile_dir)
+        self.profile_csv_path = os.path.join(profile_dir, f"{profile_name}.csv")
         
-        df = pd.read_csv(self.data_index_path)
-        # load the image where we last time left off
-        self.image_index = df.shape[0]            
+        # Use global init_data folder for images and ground truth
+        self.init_data_folder = os.path.join(self.settings["BASE_DIR"], self.settings.get("INIT_DATA_PATH", ""))
+        self.ground_truth = pd.read_csv(os.path.join(self.init_data_folder, "init_data.csv")) if os.path.exists(os.path.join(self.init_data_folder, "init_data.csv")) else pd.DataFrame()
 
-        tk.Label(self, text="Trainer", font=("Arial", 20)).pack(pady=10)
-    
-        # Main frame for everything
-        top_frame = tk.Frame(self)
-        top_frame.pack(pady=10)
-    
-        # Previous Button
-        previous_button = tk.Frame(top_frame)
-        previous_button.pack(side=tk.LEFT, padx=10)
-        self.prev_button = tk.Button(previous_button, text="Previous", font=("Arial", 12), command=self.handle_prev_button)
-        self.prev_button.pack(pady=20)
+        # Load progress
+        if os.path.exists(self.profile_csv_path):
+            self.progress_df = pd.read_csv(self.profile_csv_path)
+        else:
+            self.progress_df = pd.DataFrame(columns=["image","outcome","race_scores","obese_scores"])
 
-        # Image + slider vertical frame
-        center_column = tk.Frame(top_frame)
-        center_column.pack(side=tk.LEFT, padx=10)
-    
-        self.attr_slider = Scale(center_column, from_=-1, to=1, resolution=0.1, orient="horizontal", label="Attractiveness", length=100)
+        # Find next image index
+        done_images = set(self.progress_df["image"]) if not self.progress_df.empty else set()
+        self.image_list = list(self.ground_truth["image"]) if not self.ground_truth.empty else []
+        self.image_index = 0
+        for idx, img in enumerate(self.image_list):
+            if img not in done_images:
+                self.image_index = idx
+                break
+        else:
+            self.image_index = len(self.image_list)  # All done
+
+        # Modern phone-like card
+        card = tk.Frame(self, bg="white", bd=0, highlightthickness=0)
+        card.place(relx=0.5, rely=0.5, anchor="center", width=370, height=750)
+
+        # Modern back button
+        if self.on_back:
+            back_btn = tk.Button(card, text="← Back", font=("Arial", 12), bg="#e9eef6", relief="flat", command=self.handle_back, cursor="hand2")
+            back_btn.place(relx=0.02, rely=0.01, anchor="nw")
+
+        # Large title and subtitle
+        tk.Label(card, text="Trainer", font=("Arial", 22, "bold"), bg="white", fg="#7c3aed").pack(pady=(32, 2))
+        tk.Label(card, text="Adjust your preferences and train your model", font=("Arial", 12), bg="white", fg="#888").pack(pady=(0, 10))
+
+        # Main vertical layout
+        main_column = tk.Frame(card, bg="white")
+        main_column.pack(fill=tk.BOTH, expand=True, pady=(0, 0))
+
+        # Attractiveness meter (modern, long, pretty)
+        meter_frame = tk.Frame(main_column, bg="white")
+        meter_frame.pack(pady=(2, 0))
+        tk.Label(meter_frame, text="Attractiveness", font=("Arial", 12, "bold"), bg="white", fg="#7c3aed").pack(anchor="center", pady=(0, 0))
+        self.attr_slider = Scale(meter_frame, from_=-1, to=1, resolution=0.1, orient="horizontal", length=320, bg="white", highlightbackground="white", troughcolor="#e0e0e0", sliderrelief="flat", showvalue=True, width=18, sliderlength=32, font=("Arial", 11, "bold"))
         self.attr_slider.set(0)
-        self.attr_slider.pack(pady=5, anchor="center")
-    
-        self.image_label = tk.Label(center_column)
-        self.image_label.pack(pady=5, anchor="center")
-    
-        # Load image into label
-        image_path = os.path.join(self.settings["BASE_DIR"], self.settings['INIT_DATA_PATH'], f"{self.image_index}.png")
-        if self.image_index == count_pngs(os.path.join(self.settings["BASE_DIR"], self.settings['INIT_DATA_PATH'])):
+        self.attr_slider.pack(anchor="center", pady=(0, 4))
+
+        # Large, centered image (phone style)
+        self.image_label = tk.Label(main_column, bg="#f5f5f5", width=300, height=300, bd=0, relief="flat")
+        self.image_label.pack(pady=(8, 18))
+        if self.image_index < len(self.image_list):
+            image_path = os.path.join(self.init_data_folder, self.image_list[self.image_index])
+        else:
             image_path = os.path.join(self.settings["BASE_DIR"], "images", "ui", "AllDone.png")
-        
-        self.load_image_to_label(self.image_label, image_path)
-        
-        # Next Button
-        next_button = tk.Frame(top_frame)
-        next_button.pack(side=tk.LEFT, padx=10)
-        self.next_button = tk.Button(next_button, text="Confirm & Next", font=("Arial", 12), command=self.handle_next_button)
-        self.next_button.pack(pady=20)
-        if self.image_index == count_pngs(os.path.join(self.settings["BASE_DIR"], self.settings['INIT_DATA_PATH'])):
+        self.load_image_to_label(self.image_label, image_path, fixed_height=300)
+
+        # Navigation buttons (just below image, phone style)
+        nav_frame = tk.Frame(main_column, bg="white")
+        nav_frame.pack(pady=(0, 18))
+        self.prev_button = tk.Button(nav_frame, text="Previous", font=("Arial", 12), command=self.handle_prev_button, bg="#e9eef6", relief="flat", cursor="hand2", width=10)
+        self.prev_button.pack(side=tk.LEFT, padx=10, ipadx=6, ipady=4)
+        self.next_button = tk.Button(nav_frame, text="Confirm & Next", font=("Arial", 12, "bold"), command=self.handle_next_button, bg="#7c3aed", fg="white", relief="flat", cursor="hand2", activebackground="#a259c6", width=16)
+        self.next_button.pack(side=tk.LEFT, padx=10, ipadx=6, ipady=4)
+        if self.image_index >= len(self.image_list):
             self.next_button.config(state=tk.DISABLED)
         if self.image_index == 0:
             self.prev_button.config(state=tk.DISABLED)
-        # Bottom frame for train/cancel
-        self.button_frame = tk.Frame(self)
-        self.button_frame.pack(pady=10)
-    
-        self.train_button = tk.Button(self.button_frame, text="Train", font=("Arial", 12), width=10, command=self.handle_train_or_cancel)
-        self.train_button.pack(side=tk.LEFT, padx=10)
-    
-        return_button = tk.Button(self.button_frame, text="Return", font=("Arial", 12), width=10, command=lambda: self.close_trainer())
-        return_button.pack(side=tk.LEFT, padx=10)
-    
-        self.progress_bar = None
-        self.epoch_label = None
-        # Display how many user verdicts you have if you had made hand adjustments before
-        verdict_path = os.path.join(self.settings["BASE_DIR"], self.settings["PROFILEPATH"], "user_verdicts.csv")
-        if os.path.exists(verdict_path):
-            df = pd.read_csv(verdict_path)
-            feedbackNum = len(df)
-            tk.Label(self, text=f"You also made {feedbackNum} feedbacks that will go together into the training process.", font=("Arial", 10)).pack(pady=10)
-        # Accuracy selection
-        accuracy_frame = tk.Frame(self)
-        accuracy_frame.pack(pady=10)
 
-        tk.Label(accuracy_frame, text="Training Accuracy:", font=("Arial", 12)).pack(side=tk.LEFT, padx=5)
-
+        # Training options and action buttons (bottom row)
+        action_frame = tk.Frame(card, bg="white")
+        action_frame.pack(side=tk.BOTTOM, pady=(0, 8))
+        accuracy_frame = tk.Frame(action_frame, bg="white")
+        accuracy_frame.pack(pady=(0, 10))
+        tk.Label(accuracy_frame, text="Training Accuracy:", font=("Arial", 12), bg="white").pack(side=tk.LEFT, padx=5)
         self.accuracy_var = tk.StringVar(value="Moderate")
         accuracy_options = ["Accurate", "Moderate", "Basic", "Custom"]
         self.accuracy_menu = tk.OptionMenu(accuracy_frame, self.accuracy_var, *accuracy_options, command=self.handle_accuracy_selection)
         self.accuracy_menu.config(width=10)
         self.accuracy_menu.pack(side=tk.LEFT)
-
-        # Custom epoch entry (only visible if "Custom" is selected)
         self.custom_epoch_entry = tk.Entry(accuracy_frame, width=5)
         self.custom_epoch_entry.insert(0, "100")  # default
         self.custom_epoch_entry.pack(side=tk.LEFT, padx=5)
         self.custom_epoch_entry.pack_forget()  # hidden initially
+        self.train_button = tk.Button(action_frame, text="Train", font=("Arial", 12, "bold"), width=16, command=self.handle_train_or_cancel, bg="#4CAF50", fg="white", relief="flat", cursor="hand2", activebackground="#388e3c", padx=16)
+        self.train_button.pack(side=tk.LEFT, padx=16, ipadx=12, ipady=3, pady=7)
+
+        # Feedback label just above action_frame at the bottom
+        verdict_path = os.path.join(self.settings["BASE_DIR"], self.settings["PROFILEPATH"], "user_verdicts.csv")
+        if os.path.exists(verdict_path):
+            df = pd.read_csv(verdict_path)
+            feedbackNum = len(df)
+            self.feedback_label = tk.Label(
+                card,
+                text=f"You also made {feedbackNum} feedbacks that will go together into the training process.",
+                font=("Arial", 10),
+                bg="white",
+                fg="#888",
+                wraplength=320,
+                justify="center"
+            )
+            self.feedback_label.pack(pady=(0, 8), before=action_frame)
+
+        self.progress_bar = None
+        self.epoch_label = None
 
     def load_image_to_label(self, label_widget, image_path, fixed_height=300):
         try:
             image = Image.open(image_path).convert("RGB")
-    
-            # Calculate new width while maintaining aspect ratio
             width, height = image.size
             aspect_ratio = width / height
             new_height = fixed_height
             new_width = int(aspect_ratio * new_height)
-    
             resized_image = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
             tk_image = ImageTk.PhotoImage(resized_image)
-    
-            # Store a reference to avoid garbage collection
             label_widget.image = tk_image
             label_widget.config(image=tk_image)
         except Exception as e:
             print(f"[ERROR] Failed to load image {image_path}: {e}")
-    
+
     def handle_accuracy_selection(self, value):
         if value == "Custom":
             self.custom_epoch_entry.pack(side=tk.LEFT, padx=5)
@@ -141,27 +153,30 @@ class TrainPanel(tk.Toplevel):
         if self.image_index <= 0:
             return
         self.image_index -= 1
-        image_path = os.path.join(self.settings.get("BASE_DIR", ''), self.settings.get('INIT_DATA_PATH', ''), f"{self.image_index}.png")
+        image_path = os.path.join(self.init_data_folder, self.image_list[self.image_index])
         self.load_image_to_label(self.image_label, image_path)
-        # Read the row value and restore value
-        df = pd.read_csv(self.data_index_path)
-        stored_attractiveness = df.loc[df["image"] == f"{self.image_index}.png"].iloc[0].to_dict()["outcome"]
-        self.attr_slider.set(stored_attractiveness)
+        # Restore value if present
+        img_name = self.image_list[self.image_index]
+        match = self.progress_df["image"] == img_name
+        if match.any():
+            stored_attractiveness = self.progress_df.loc[match, "outcome"].values[0]
+            self.attr_slider.set(stored_attractiveness)
+        else:
+            self.attr_slider.set(0)
         self.next_button.config(state=tk.NORMAL)
         if self.image_index == 0:
             self.prev_button.config(state=tk.DISABLED)
 
     def handle_next_button(self):
         # Write the current slider value into csv
-        row_dict = self.ground_truth.loc[self.ground_truth["image"] == f"{self.image_index}.png"].iloc[0].to_dict()
-        df = pd.read_csv(self.data_index_path)
-        match = df["image"] == f"{self.image_index}.png"
+        img_name = self.image_list[self.image_index]
+        row_dict = self.ground_truth.loc[self.ground_truth["image"] == img_name].iloc[0].to_dict()
+        match = self.progress_df["image"] == img_name
         if match.any():
             # Update row if already exist
-            df.loc[match, "image"] = row_dict["image"]
-            df.loc[match, "outcome"] = self.attr_slider.get()
-            df.loc[match, "race_scores"] = row_dict["race_scores"]
-            df.loc[match, "obese_scores"] = row_dict["obese_scores"]
+            self.progress_df.loc[match, "outcome"] = self.attr_slider.get()
+            self.progress_df.loc[match, "race_scores"] = row_dict["race_scores"]
+            self.progress_df.loc[match, "obese_scores"] = row_dict["obese_scores"]
         else:
             # Append a new row
             new_row = {
@@ -170,24 +185,26 @@ class TrainPanel(tk.Toplevel):
                 "race_scores": row_dict["race_scores"],
                 "obese_scores": row_dict["obese_scores"]
             }
-            df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
-
+            self.progress_df = pd.concat([self.progress_df, pd.DataFrame([new_row])], ignore_index=True)
         # Save the updated DataFrame back to the CSV
-        df.to_csv(self.data_index_path, index=False)
-
+        self.save_progress()
         self.image_index += 1
-        image_path = os.path.join(self.settings.get("BASE_DIR", ''), self.settings.get('INIT_DATA_PATH', ''), f"{self.image_index}.png")
-        self.prev_button.config(state=tk.NORMAL)
-        if self.image_index == count_pngs(os.path.join(self.settings.get("BASE_DIR", ''), self.settings.get('INIT_DATA_PATH', ''))):
+        if self.image_index < len(self.image_list):
+            image_path = os.path.join(self.init_data_folder, self.image_list[self.image_index])
+            self.prev_button.config(state=tk.NORMAL)
+            self.next_button.config(state=tk.NORMAL)
+            # Restore value if present
+            img_name = self.image_list[self.image_index]
+            match = self.progress_df["image"] == img_name
+            if match.any():
+                self.attr_slider.set(float(self.progress_df.loc[match, "outcome"]))
+            else:
+                self.attr_slider.set(0)
+        else:
             self.next_button.config(state=tk.DISABLED)
             image_path = os.path.join(self.settings["BASE_DIR"], "images", "ui", "AllDone.png")
-        self.load_image_to_label(self.image_label, image_path)
-        match = df["image"] == f"{self.image_index}.png"
-        if match.any():
-            # Load the previous value if it has been set
-            self.attr_slider.set(float(df.loc[match, "outcome"]))
-        else:
             self.attr_slider.set(0)
+        self.load_image_to_label(self.image_label, image_path)
 
     def handle_train_or_cancel(self):
         if not self.training_in_progress:
@@ -275,5 +292,11 @@ class TrainPanel(tk.Toplevel):
             self.epoch_label.destroy()
             self.epoch_label = None
 
-    def close_trainer(self):
-        self.destroy()
+    def handle_back(self):
+        if self.on_back:
+            self.on_back()
+
+    def save_progress(self):
+        """Save the current progress DataFrame to the profile's CSV file"""
+        print(f"[DEBUG] Saving progress to {self.profile_csv_path}")
+        self.progress_df.to_csv(self.profile_csv_path, index=False)

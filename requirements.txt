@@ -1,0 +1,28 @@
+# BumbleBot requirements
+# Use Python 3.10 or 3.11 for cefpython3 support
+
+cefpython3
+numpy
+pandas
+torch
+torchvision
+torchaudio
+Pillow
+requests
+selenium
+google-auth
+google-auth-oauthlib
+google-api-python-client
+pyinstaller
+Flask
+Flask-SQLAlchemy
+psycopg2-binary
+stripe
+Flask-Cors
+gunicorn
+python-dotenv
+tqdm
+dlib-19.22.99-cp39-cp39-win_amd64.whl
+# (Add any other packages you use in your codebase)
+
+# ... existing requirements ...

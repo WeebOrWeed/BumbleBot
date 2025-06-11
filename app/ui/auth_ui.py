@@ -8,6 +8,8 @@ import requests
 from utils import utilities as UM
 from pathlib import Path
 import sys
+from PIL import Image, ImageTk
+from cefpython3 import cefpython as cef
 
 # Google OAuth imports (from previous example)
 from google.auth.transport.requests import Request
@@ -45,7 +47,7 @@ def get_executable_dir_path(relative_path=""):
 BASE_DIR_EXE = get_executable_dir_path()
 TOKEN_PATH = BASE_DIR_EXE / "configs" / "token.json"
 class AuthUI(tk.Toplevel):
-    def __init__(self, parent, onDestroy):
+    def __init__(self, parent, on_open_main_ui=None):
         super().__init__(parent)
         self.settings = UM.load_settings()
         self.title("BumbleBot Login")
@@ -59,13 +61,10 @@ class AuthUI(tk.Toplevel):
         self.polling_thread = None
         self.polling_active = False
         self.open_bumble_bot = False
+        self.on_open_main_ui = on_open_main_ui
         self.check_login_status()
-        # Bind to the <Destroy> event
-        # This handler will be called *just before* the widget is fully destroyed
-        self.bind("<Destroy>", onDestroy)
 
         # Periodically check subscription status (e.g., every 5 minutes)
-        # This is a fallback; webhooks are more immediate
         self.after(300000, self.periodic_subscription_check)
 
     # --- Google OAuth Functions ---
@@ -106,13 +105,31 @@ class AuthUI(tk.Toplevel):
         for widget in self.winfo_children():
             widget.destroy()
 
-        self.login_frame = ttk.Frame(self, padding="20")
-        self.login_frame.pack(expand=True, fill="both")
+        # Outer frame for centering
+        outer_frame = tk.Frame(self, bg='#a259c6')  # Gradient-like background color
+        outer_frame.pack(expand=True, fill="both")
 
-        ttk.Label(self.login_frame, text="Welcome! Please log in with Google.", font=("Arial", 16)).pack(pady=20)
-        
-        google_login_button = ttk.Button(self.login_frame, text="Login with Google", command=self.handle_google_login)
-        google_login_button.pack(pady=10)
+        # Centered white box with rounded corners (simulated)
+        card_frame = tk.Frame(outer_frame, bg="white", bd=0, highlightthickness=0)
+        card_frame.place(relx=0.5, rely=0.5, anchor="center", width=400, height=420)
+        card_frame.grid_propagate(False)
+
+        # Vertical layout: logo on top, then login UI
+        logo_path = UM.resource_path("images/ui/BumbleBotLogo.png")
+        try:
+            logo_img = Image.open(logo_path)
+            logo_img = logo_img.resize((120, 120), Image.LANCZOS)
+            logo_tk = ImageTk.PhotoImage(logo_img)
+            logo_label = tk.Label(card_frame, image=logo_tk, bg="white")
+            logo_label.image = logo_tk  # Keep a reference!
+            logo_label.pack(pady=(40, 20))
+        except Exception as e:
+            tk.Label(card_frame, text="BumbleBot", font=("Arial", 20), bg="white").pack(pady=(40, 20))
+
+        tk.Label(card_frame, text="Member Login", font=("Arial", 18, "bold"), bg="white").pack(pady=(0, 30))
+        google_login_button = ttk.Button(card_frame, text="Login with Google", command=self.handle_google_login)
+        google_login_button.pack(ipadx=30, ipady=8, pady=(0, 10))
+        tk.Label(card_frame, text="Google sign-in only", font=("Arial", 10), fg="#888", bg="white").pack(pady=(10, 0))
 
     def handle_google_login(self):
         self.credentials = self.get_google_credentials()
@@ -265,36 +282,54 @@ class AuthUI(tk.Toplevel):
         for widget in self.winfo_children():
             widget.destroy()
 
-        self.main_frame = ttk.Frame(self, padding="20")
-        self.main_frame.pack(expand=True, fill="both")
+        # Outer frame for centering
+        outer_frame = tk.Frame(self, bg='#a259c6')
+        outer_frame.pack(expand=True, fill="both")
 
-        ttk.Label(self.main_frame, text=f"Welcome, {self.user_profile.get('name', 'User')}!", font=("Arial", 18, "bold")).pack(pady=20)
-        # ttk.Label(self.main_frame, text=f"Email: {self.user_profile.get('email', 'N/A')}").pack(pady=5)
-        # ttk.Label(self.main_frame, text=f"Google ID: {self.user_profile.get('id', 'N/A')}").pack(pady=5)
-        ttk.Label(self.main_frame, text=f"Subscription Status: {'Active' if self.is_subscribed else 'Inactive'}", font=("Arial", 12)).pack(pady=10)
-        
+        # Centered white box
+        card_frame = tk.Frame(outer_frame, bg="white", bd=0, highlightthickness=0)
+        card_frame.place(relx=0.5, rely=0.5, anchor="center", width=400, height=520)
+        card_frame.grid_propagate(False)
+
+        # Logo at the top
+        logo_path = UM.resource_path("images/ui/BumbleBotLogo.png")
+        try:
+            logo_img = Image.open(logo_path)
+            logo_img = logo_img.resize((100, 100), Image.LANCZOS)
+            logo_tk = ImageTk.PhotoImage(logo_img)
+            logo_label = tk.Label(card_frame, image=logo_tk, bg="white")
+            logo_label.image = logo_tk
+            logo_label.pack(pady=(30, 10))
+        except Exception as e:
+            tk.Label(card_frame, text="BumbleBot", font=("Arial", 20), bg="white").pack(pady=(30, 10))
+
+        # Welcome and status
+        tk.Label(card_frame, text=f"Welcome, {self.user_profile.get('name', 'User')}!", font=("Arial", 18, "bold"), bg="white").pack(pady=(0, 10))
+        tk.Label(card_frame, text=f"Subscription Status: {'Active' if self.is_subscribed else 'Inactive'}", font=("Arial", 12), bg="white").pack(pady=(0, 20))
+
         if not self.is_subscribed:
-            ttk.Label(self.main_frame, text="Please subscribe to access the main features.").pack(pady=10)
+            tk.Label(card_frame, text="Please subscribe to access the main features.", bg="white").pack(pady=(0, 10))
+            subscribe_button = ttk.Button(card_frame, text="Subscribe Now", command=self.open_stripe_checkout)
+            subscribe_button.pack(ipadx=20, ipady=6, pady=(0, 10))
 
-            subscribe_button = ttk.Button(self.main_frame, text="Subscribe Now", command=self.open_stripe_checkout)
-            subscribe_button.pack(pady=20)
-        
-        # Optionally, a button to re-check status if they paid externally or on another device
-        check_status_button = ttk.Button(self.main_frame, text="Refresh Subscription Status", command=self.check_subscription_status)
-        check_status_button.pack(pady=10)
-        
-        if self.is_subscribed: # Link to Stripe Customer Portal (optional but highly recommended)
-            manage_subscription_button = ttk.Button(self.main_frame, text="Cancel Subscription (Stripe Portal)", command=self.open_customer_portal)
-            manage_subscription_button.pack(pady=10)
-            # Button to close the Login app and open the BumbleBot app
-            open_bumblebot_button = ttk.Button(self.main_frame, text="Open BumbleBot", command=self.open_bumble_bot_page)
-            open_bumblebot_button.pack(pady=10)
+        check_status_button = ttk.Button(card_frame, text="Refresh Subscription Status", command=self.check_subscription_status)
+        check_status_button.pack(ipadx=10, ipady=4, pady=(0, 10))
 
-        logout_button = ttk.Button(self.main_frame, text="Logout", command=self.logout)
-        logout_button.pack(pady=20)
+        if self.is_subscribed:
+            manage_subscription_button = ttk.Button(card_frame, text="Cancel Subscription (Stripe Portal)", command=self.open_customer_portal)
+            manage_subscription_button.pack(ipadx=10, ipady=4, pady=(0, 10))
+            open_bumblebot_button = ttk.Button(card_frame, text="Open BumbleBot", command=self.open_bumble_bot_page)
+            open_bumblebot_button.pack(ipadx=10, ipady=4, pady=(0, 10))
+
+        logout_button = ttk.Button(card_frame, text="Logout", command=self.logout)
+        logout_button.pack(ipadx=10, ipady=4, pady=(20, 0))
 
     def open_bumble_bot_page(self):
-        self.open_bumble_bot = True
+        print("Opening BumbleBot page")
+        if not hasattr(cef, '_initialized') or not cef._initialized:
+            cef.Initialize()
+        if self.on_open_main_ui:
+            self.on_open_main_ui()
         self.destroy()
 
     def open_customer_portal(self):
